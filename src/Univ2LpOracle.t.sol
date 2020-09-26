@@ -2,13 +2,17 @@ pragma solidity ^0.6.7;
 
 import "ds-test/test.sol";
 
-import "./Univ2LpOracle.sol";
+import "./UNIV2LPOracle.sol";
 
-contract Univ2LpOracleTest is DSTest {
-    Univ2LpOracle oracle;
+contract UNIV2LPOracleTest is DSTest {
+    UNIV2LPOracle oracle;
+    address uniswapPool;
+    bytes32 poolName = "ETH-USDC-UNIV2-LP";
+    bool selector = false;
+    address tokenOracle;
 
     function setUp() public {
-        oracle = new Univ2LpOracle();
+        oracle = new UNIV2LPOracle(uniswapPool, poolName, selector, tokenOracle);
     }
 
     function testFail_basic_sanity() public {
