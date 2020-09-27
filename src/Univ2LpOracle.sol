@@ -70,9 +70,41 @@ interface OracleLike {
     function peek() external view returns (uint256,bool);
 }
 
-//Factory for producting UNIVLPOracle instances
+//Factory for producting UNIV2LPOracle instances
 contract UNIV2LPOracleFactory {
-    //TODO
+
+    // --- Auth ---
+    mapping (address => uint) public wards;                         //addresses with admin authority
+    function rely(address usr) external auth { wards[usr] = 1; }    //add admin
+    function deny(address usr) external auth { wards[usr] = 0; }    //remove admin
+    modifier auth {
+        require(wards[msg.sender] == 1, "UNIV2LPOracle/not-authorized");
+        _;
+    }
+
+    mapping(address=>bool) public isOracle;
+    mapping(address=>mapping(address=>address)) public register;
+
+    event Created(address sender, address oracle, address token0, address token1, bytes32 name);
+
+    function build(address UNIV2LP, bytes32 wat, address token0Oracle, address token1Oracle) public returns (address oracle) {
+        address token0 = UniswapV2PairLike(UNIV2LP).token0();
+        address token1 = UniswapV2PairLike(UNIV2LP).token1();
+        require(register[token0][token1] == address(0), "UNIV2LPOracleFactory/oracle-already-exists");
+        oracle = address(new UNIV2LPOracle(UNIV2LP, wat, token0Oracle, token1Oracle));
+        register[token0][token1] = oracle;
+        isOracle[oracle] = true;
+        Created(msg.sender, oracle, token0, token1, wat);
+    }
+
+    function delist(address oracle) public auth {
+        require(isOracle[oracle], "UNIVPLPOracleFactory/not-an-oracle");
+        address src = UNIV2LPOracle(oracle).src();
+        address token0 = UniswapV2PairLike(src).token0();
+        address token1 = UniswapV2PairLike(src).token1();
+        isOracle[oracle] = false;
+        register[token0][token1] = address(0);
+    }
 }
 
 contract UNIV2LPOracle {
@@ -117,8 +149,8 @@ contract UNIV2LPOracle {
     }
 
     address    public  src;   //price source
-	uint32     public  zzz;   //time of last price update
-	bytes32    public  wat;   //token whose price is being tracked
+    uint32     public  zzz;   //time of last price update
+    bytes32    public  wat;   //token whose price is being tracked
 
     uint16     constant ONE_HOUR = uint16(3600);
     uint16     public  hop = ONE_HOUR;  //minimum time inbetween price updates
@@ -188,11 +220,11 @@ contract UNIV2LPOracle {
         uint balToken0 = sqrt(mul(k, div(token1Price, token0Price)));   //get token0 balance
         uint balToken1 = div(k, balToken0);                             //get token1 balance; gas-savings
 
-        uint lpTokenSupply = ERC20Like(src).totalSupply();      //get LP token supply
+        uint lpTokenSupply = ERC20Like(src).totalSupply();              //get LP token supply
 
         lpTokenPrice_ = uint128(div(add(mul(balToken0,token0Price),mul(balToken1,token1Price)),lpTokenSupply));     //calculate LP token price
 
-        zzz_ = _blockTimestampLast;                         //update timestamp
+        zzz_ = _blockTimestampLast;                                     //update timestamp
     }
 
     function poke() external stoppable {
@@ -239,5 +271,4 @@ contract UNIV2LPOracle {
             bud[a[i]] = 0;
         }
     }
-
 }
