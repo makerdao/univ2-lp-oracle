@@ -8,11 +8,11 @@ contract UNIV2LPOracleTest is DSTest {
     UNIV2LPOracle oracle;
     address uniswapPool;
     bytes32 poolName = "ETH-USDC-UNIV2-LP";
-    bool selector = false;
-    address tokenOracle;
+    address token0Oracle;
+    address token1Oracle;
 
     function setUp() public {
-        oracle = new UNIV2LPOracle(uniswapPool, poolName, selector, tokenOracle);
+        oracle = new UNIV2LPOracle(uniswapPool, poolName, token0Oracle, token1Oracle);
     }
 
     function testFail_basic_sanity() public {
