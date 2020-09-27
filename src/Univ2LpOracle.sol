@@ -149,8 +149,8 @@ contract UNIV2LPOracle {
         src = _src;
         zzz = 0;
         wat = _wat;
-        token0Decimals = ERC20Like(UniswapV2PairLike(_src).token0).decimals;    //get decimals of token0
-        token1Decimals = ERC20Like(UniswapV2PairLike(_src).token1).decimals;     //get decimals of token1
+        token0Decimals = uint8(ERC20Like(UniswapV2PairLike(_src).token0()).decimals());     //get decimals of token0
+        token1Decimals = uint8(ERC20Like(UniswapV2PairLike(_src).token1()).decimals());     //get decimals of token1
         token0Oracle = _token0Oracle;
         token1Oracle = _token1Oracle;
     }
@@ -190,7 +190,7 @@ contract UNIV2LPOracle {
 
         uint lpTokenSupply = ERC20Like(src).totalSupply();      //get LP token supply
 
-        lpTokenPrice_ = div(add(mul(balToken0,token0Price),mul(balToken1,token1Price)),lpTokenSupply);   //calculate LP token price
+        lpTokenPrice_ = uint128(div(add(mul(balToken0,token0Price),mul(balToken1,token1Price)),lpTokenSupply));     //calculate LP token price
 
         zzz_ = _blockTimestampLast;                         //update timestamp
     }
@@ -241,4 +241,3 @@ contract UNIV2LPOracle {
     }
 
 }
-
