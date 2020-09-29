@@ -47,9 +47,9 @@
 //  LP Share (USD) = (BAL_ETH * ETHUSD) + (BAL_DAI * 1)
 //  LP Price (USD) = LP Share / LP Token Supply
 
-pragma solidity ^0.6.7;
+pragma solidity ^0.5.12;
 
-import "UQ112x112/UQ112x112.sol";
+import "./UQ112x112.sol";
 
 interface ERC20Like {
     function decimals() external view returns (uint8);
@@ -94,7 +94,7 @@ contract UNIV2LPOracleFactory {
         oracle = address(new UNIV2LPOracle(UNIV2LP, wat, token0Oracle, token1Oracle));
         register[token0][token1] = oracle;
         isOracle[oracle] = true;
-        Created(msg.sender, oracle, token0, token1, wat);
+        emit Created(msg.sender, oracle, token0, token1, wat);
     }
 
     function delist(address oracle) public auth {
@@ -134,6 +134,12 @@ contract UNIV2LPOracle {
     function div(uint x, uint y) internal pure returns (uint z) {
         require(y > 0 && (z = x / y) * y == x, "ds-math-divide-by-zero");
     }
+    function wmul(uint x, uint y) internal pure returns (uint z) {
+        z = add(mul(x, y), WAD / 2) / WAD;
+    }
+    function wdiv(uint x, uint y) internal pure returns (uint z) {
+        z = add(mul(x, WAD), y / 2) / y;
+    }
     //compute square using babylonian method
     function sqrt(uint y) internal pure returns (uint z) {
         if (y > 3) {
@@ -169,12 +175,15 @@ contract UNIV2LPOracle {
     address public  token0Oracle;       //Oracle for token0, ideally a Medianizer
     address public  token1Oracle;       //Oracle for token1, ideally a Medianizer
 
+    uint256 constant WAD = 10 ** 18;
+
     // Whitelisted contracts, set by an auth
     mapping (address => uint256) public bud;
 
     modifier toll { require(bud[msg.sender] == 1, "UNIV2LPOracle/contract-not-whitelisted"); _; }
 
     event LogValue(uint128 val);
+    event Debug(uint i, uint val);
 
     constructor (address _src, bytes32 _wat, address _token0Oracle, address _token1Oracle) public {
         wards[msg.sender] = 1;
@@ -208,23 +217,40 @@ contract UNIV2LPOracle {
         (uint112 _reserve0, uint112 _reserve1, uint32 _blockTimestampLast) = UniswapV2PairLike(src).getReserves();  //pull reserves
         require(_blockTimestampLast == block.timestamp);
 
-        uint k = mul(_reserve0, _reserve1);                 //calculate constant product invariant k
+        emit Debug(11, _reserve0);
+        emit Debug(12, _reserve1);
+        uint k = mul(_reserve0, _reserve1);                 // Calculate constant product invariant k (WAD * WAD)
+        emit Debug(1, k);
 
-        //all Oracle prices are priced with 18 decimals against USD
-        uint token0Price = OracleLike(token0Oracle).read(); //query token0 price from oracle
-        uint token1Price = OracleLike(token1Oracle).read(); //query token1 price from oracle
+        // All Oracle prices are priced with 18 decimals against USD
+        uint token0Price = OracleLike(token0Oracle).read(); // Query token0 price from oracle (WAD)
+        emit Debug(2, token0Price);
+        uint token1Price = OracleLike(token1Oracle).read(); // Query token1 price from oracle (WAD)
+        emit Debug(3, token1Price);
 
-        //todo - use priceCumulativeLast in place of p_y / p_x from external oracles for better accuracy when calculating balances
+        // TODO: Use priceCumulativeLast in place of p_y / p_x from external oracles for better accuracy when calculating balances
         // formula: (py / px) = (priceCumulativeLast2 - priceCumulativeLast1) / (t2 - t1)
         //^^^ this requires we track priceCumulativeLast in storage for future ref point
-        uint balToken0 = sqrt(mul(k, div(token1Price, token0Price)));   //get token0 balance
-        uint balToken1 = div(k, balToken0);                             //get token1 balance; gas-savings
+        emit Debug(4, wdiv(token1Price, token0Price));
+        uint balToken0 = sqrt(wmul(k, wdiv(token1Price, token0Price)));  // Get token0 balance (WAD)
+        emit Debug(5, balToken0);
+        uint balToken1 = wdiv(k, balToken0) / WAD;                       // Get token1 balance; gas-savings
+        emit Debug(6, balToken1);
 
-        uint lpTokenSupply = ERC20Like(src).totalSupply();              //get LP token supply
+        uint lpTokenSupply = ERC20Like(src).totalSupply();               // Get LP token supply
+        emit Debug(7, lpTokenSupply);
 
-        lpTokenPrice_ = uint128(div(add(mul(balToken0,token0Price),mul(balToken1,token1Price)),lpTokenSupply));     //calculate LP token price
-
-        zzz_ = _blockTimestampLast;                                     //update timestamp
+        lpTokenPrice_ = uint128(
+            wdiv(
+                add(
+                    wmul(balToken0, token0Price), // (WAD)
+                    wmul(balToken1, token1Price)  // (WAD)
+                ), 
+                lpTokenSupply // (WAD)
+            )
+        );     
+        
+        zzz_ = _blockTimestampLast; // Update timestamp
     }
 
     function poke() external stoppable {
