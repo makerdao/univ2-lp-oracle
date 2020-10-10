@@ -2,7 +2,7 @@ pragma solidity ^0.5.12;
 
 import "ds-test/test.sol";
 
-import "./UNIV2LPOracle.sol";
+import "./Univ2LpOracle.sol";
 
 interface Hevm {
     function warp(uint256) external;
@@ -52,13 +52,13 @@ contract UNIV2LPOracleTest is DSTest {
     Hevm          hevm;
     UNIV2LPOracle ethDaiLPOracle;
     UNIV2LPOracle ethUsdcLPOracle;
-    
+
     address constant ETH_DAI_UNI_POOL = 0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11;
     address constant ETH_ORACLE       = 0x81FE72B5A8d1A857d176C3E7d5Bd2679A9B85763;
     address constant USDC_ORACLE      = 0x77b68899b99b686F415d074278a9a16b336085A0; // Using in place for DAI price
 
     address constant ETH_USDC_UNI_POOL = 0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc;
-    
+
     bytes32 poolNameDAI = "ETH-DAI-UNIV2-LP";
     bytes32 poolNameUSDC = "ETH-USDC-UNIV2-LP";
 
@@ -130,12 +130,12 @@ contract UNIV2LPOracleTest is DSTest {
         address token0 = UniswapV2PairLike(ETH_USDC_UNI_POOL).token0();
         address token1 = UniswapV2PairLike(ETH_USDC_UNI_POOL).token1();
 
-        //Verify token balances of LP contract match balances returned by getReserves() 
+        //Verify token balances of LP contract match balances returned by getReserves()
         assertEq(_reserve0, ERC20Like(token0).balanceOf(ETH_USDC_UNI_POOL));
         assertEq(_reserve1, ERC20Like(token1).balanceOf(ETH_USDC_UNI_POOL));
         //  -- END Test 1 --  //
 
-        // adjust reserves w/ respect to decimals 
+        // adjust reserves w/ respect to decimals
         if (ethUsdcLPOracle.token0Decimals() != uint8(18)) {
             _reserve0 = uint112(_reserve0 * 10 ** sub(18, ethUsdcLPOracle.token0Decimals()));
         }
@@ -144,17 +144,17 @@ contract UNIV2LPOracleTest is DSTest {
         }
 
         // -- BEGIN TEST 2 -- //
-        //Verify reserve decimal adjustment 
+        //Verify reserve decimal adjustment
         assertEq(_reserve1, ERC20Like(token1).balanceOf(ETH_USDC_UNI_POOL));    //if condition not entered for WETH (18 decimals)
-        assert(_reserve0 > ERC20Like(token0).balanceOf(ETH_USDC_UNI_POOL));     //if condition entered for USDC (6 decimals)
+        assertTrue(_reserve0 > ERC20Like(token0).balanceOf(ETH_USDC_UNI_POOL));     //if condition entered for USDC (6 decimals)
         assertEq(_reserve0 / 10 ** 12, ERC20Like(token0).balanceOf(ETH_USDC_UNI_POOL));     //verify decimal adjustment behaves correctly
         //  -- END Test 2 --  //
 
         uint k = mul(_reserve0, _reserve1);                 // Calculate constant product invariant k (WAD * WAD)
 
         // -- BEGIN TEST 3 -- //
-        assert(k > _reserve0);
-        assert(k > _reserve1);
+        assertTrue(k > _reserve0);
+        assertTrue(k > _reserve1);
         assertEq(div(k, _reserve0), _reserve1);
         assertEq(div(k, _reserve1), _reserve0);
         //  -- END Test 3 --  //
@@ -164,8 +164,8 @@ contract UNIV2LPOracleTest is DSTest {
         uint token1Price = OracleLike(ethUsdcLPOracle.token1Oracle()).read();   // Query token1 price from oracle (WAD)
 
         // -- BEGIN TEST 4 -- //
-        assert(token0Price > 0);
-        assert(token1Price > 0);
+        assertTrue(token0Price > 0);
+        assertTrue(token1Price > 0);
         //  -- END Test 4 --  //
 
         uint normReserve0 = sqrt(wmul(k, wdiv(token1Price, token0Price)));      // Get token0 balance (WAD)
@@ -174,10 +174,10 @@ contract UNIV2LPOracleTest is DSTest {
         // -- BEGIN TEST 5 -- //
         //verify normalized reserve are within 1% margin of actual reserves
         //during times of high price volatility this condition may not hold
-        assert(normReserve0 > 0);
-        assert(normReserve1 > 0);
-        assert(mul(uint(_reserve0), 99) < mul(normReserve0, 100));
-        assert(mul(normReserve0, 100) < mul(uint(_reserve0), 101));
+        assertTrue(normReserve0 > 0);
+        assertTrue(normReserve1 > 0);
+        assertTrue(mul(uint(_reserve0), 99) < mul(normReserve0, 100));
+        assertTrue(mul(normReserve0, 100) < mul(uint(_reserve0), 101));
         //  -- END Test 5 --  //
 
         uint lpTokenSupply = ERC20Like(ETH_USDC_UNI_POOL).totalSupply();        // Get LP token supply
@@ -187,10 +187,10 @@ contract UNIV2LPOracleTest is DSTest {
                 add(
                     wmul(normReserve0, token0Price), // (WAD)
                     wmul(normReserve1, token1Price)  // (WAD)
-                ), 
+                ),
                 lpTokenSupply // (WAD)
             )
-        ); 
+        );
         uint32 zzz = _blockTimestampLast; // Update timestamp
 
         ///////////////////////////////////////
@@ -201,7 +201,7 @@ contract UNIV2LPOracleTest is DSTest {
 
     }
 
-    function test_poke() public { 
+    function test_poke() public {
         ethDaiLPOracle.poke();
     }
 }
