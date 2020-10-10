@@ -61,16 +61,15 @@ import "./UQ112x112.sol";
 
 interface ERC20Like {
     function decimals() external view returns (uint8);
+    function balanceOf(address) external view returns (uint256);
     function totalSupply() external view returns (uint256);   
 }
 
-interface UniswapV2PairLike {
-    function sync() external;
+interface UniswapV2PairLike {    function sync() external;
     function token0() external view returns (address);
     function token1() external view returns (address);
-    function price0CumulativeLast() external view returns (uint256);
-    function price1CumulativeLast() external view returns (uint256);
     function getReserves() external view returns (uint112,uint112,uint32);  //reserve0,reserve1,blockTimestampLast
+
 }
 
 interface OracleLike {
@@ -253,14 +252,13 @@ contract UNIV2LPOracle {
         // TODO: Use priceCumulativeLast in place of p_y / p_x from external oracles for better accuracy when calculating balances
         // formula: (py / px) = (priceCumulativeLast2 - priceCumulativeLast1) / (t2 - t1)
         //^^^ this requires we track priceCumulativeLast in storage for future ref point
-        emit Debug(5, wdiv(token1Price, token0Price));
         uint normReserve0 = sqrt(wmul(k, wdiv(token1Price, token0Price)));  // Get token0 balance (WAD)
         emit Debug(20, normReserve0);
         uint normReserve1 = wdiv(k, normReserve0) / WAD;                    // Get token1 balance; gas-savings
         emit Debug(21, normReserve1);
 
         uint lpTokenSupply = ERC20Like(src).totalSupply();                  // Get LP token supply
-        emit Debug(8, lpTokenSupply);
+        emit Debug(5, lpTokenSupply);
 
         lpTokenPrice_ = uint128(
             wdiv(
@@ -270,8 +268,8 @@ contract UNIV2LPOracle {
                 ), 
                 lpTokenSupply // (WAD)
             )
-        );     
-        
+        );
+        emit Debug(6, lpTokenPrice_);   
         zzz_ = _blockTimestampLast; // Update timestamp
     }
 
