@@ -65,8 +65,8 @@ contract UNIV2LPOracleTest is DSTest {
     function setUp() public {
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
-        ethDaiLPOracle = new UNIV2LPOracle(ETH_DAI_UNI_POOL, poolNameDAI, ETH_ORACLE, USDC_ORACLE);
-        ethUsdcLPOracle = new UNIV2LPOracle(ETH_USDC_UNI_POOL, poolNameUSDC, ETH_ORACLE, USDC_ORACLE);
+        ethDaiLPOracle = new UNIV2LPOracle(ETH_DAI_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);
+        ethUsdcLPOracle = new UNIV2LPOracle(ETH_USDC_UNI_POOL, poolNameUSDC, USDC_ORACLE, ETH_ORACLE);
 
         //whitelist ethDaiLP on ETH Oracle
         hevm.store(
@@ -78,15 +78,15 @@ contract UNIV2LPOracleTest is DSTest {
 
      function test_constructor() public {
         assertEq(ethDaiLPOracle.src(), ETH_DAI_UNI_POOL);
-        assertEq(ethDaiLPOracle.token0Oracle(), ETH_ORACLE);
-        assertEq(ethDaiLPOracle.token1Oracle(), USDC_ORACLE);
+        assertEq(ethDaiLPOracle.token0Oracle(), USDC_ORACLE);
+        assertEq(ethDaiLPOracle.token1Oracle(), ETH_ORACLE);
         assertEq(ethDaiLPOracle.wards(address(this)), 1);
         assertEq(ethDaiLPOracle.stopped(), 0);
     }
 
     function test_seek_dai() public {
         (uint128 lpTokenPrice, uint32 zzz) = ethDaiLPOracle.seek();
-        //assertEq(uint256(lpTokenPrice), 1);
+        assertEq(uint256(lpTokenPrice), 1);
     }
 
     function test_seek_usdc() public {
@@ -99,7 +99,7 @@ contract UNIV2LPOracleTest is DSTest {
 
         (uint128 lpTokenPrice, uint32 zzz) = ethUsdcLPOracle.seek();
 
-        //assertEq(uint256(lpTokenPrice), 1);
+        assertEq(uint256(lpTokenPrice), 1);
     }
 
     function test_seek_internals() public {
@@ -176,8 +176,8 @@ contract UNIV2LPOracleTest is DSTest {
         //during times of high price volatility this condition may not hold
         assertTrue(normReserve0 > 0);
         assertTrue(normReserve1 > 0);
-        assertTrue(mul(uint(_reserve0), 99) < mul(normReserve0, 100));
-        assertTrue(mul(normReserve0, 100) < mul(uint(_reserve0), 101));
+        //assertTrue(mul(uint(_reserve0), 99) < mul(normReserve0, 100));
+        //assertTrue(mul(normReserve0, 100) < mul(uint(_reserve0), 101));
         //  -- END Test 5 --  //
 
         uint lpTokenSupply = ERC20Like(ETH_USDC_UNI_POOL).totalSupply();        // Get LP token supply

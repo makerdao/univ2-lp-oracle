@@ -249,9 +249,6 @@ contract UNIV2LPOracle {
         uint token1Price = OracleLike(token1Oracle).read(); // Query token1 price from oracle (WAD)
         emit Debug(4, token1Price);
 
-        // TODO: Use priceCumulativeLast in place of p_y / p_x from external oracles for better accuracy when calculating balances
-        // formula: (py / px) = (priceCumulativeLast2 - priceCumulativeLast1) / (t2 - t1)
-        //^^^ this requires we track priceCumulativeLast in storage for future ref point
         uint normReserve0 = sqrt(wmul(k, wdiv(token1Price, token0Price)));  // Get token0 balance (WAD)
         emit Debug(20, normReserve0);
         uint normReserve1 = wdiv(k, normReserve0) / WAD;                    // Get token1 balance; gas-savings
