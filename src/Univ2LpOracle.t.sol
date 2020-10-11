@@ -77,29 +77,26 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
      function test_constructor() public {
-        assertEq(ethDaiLPOracle.src(), ETH_DAI_UNI_POOL);
-        assertEq(ethDaiLPOracle.token0Oracle(), USDC_ORACLE);
-        assertEq(ethDaiLPOracle.token1Oracle(), ETH_ORACLE);
-        assertEq(ethDaiLPOracle.wards(address(this)), 1);
-        assertEq(ethDaiLPOracle.stopped(), 0);
+        assertEq(ethDaiLPOracle.src(), ETH_DAI_UNI_POOL);                   //verify source is ETH-DAI pool
+        assertEq(ethDaiLPOracle.token0Oracle(), USDC_ORACLE);               //verify token 0 oracle is USDC oracle
+        assertEq(ethDaiLPOracle.token1Oracle(), ETH_ORACLE);                //verify token 1 oracle is ETH oracle
+        assertEq(ethDaiLPOracle.wards(address(this)), 1);                   //verify owner
+        assertEq(ethDaiLPOracle.stopped(), 0);                              //verify contract active
     }
 
     function test_seek_dai() public {
-        (uint128 lpTokenPrice, uint32 zzz) = ethDaiLPOracle.seek();
-        assertEq(uint256(lpTokenPrice), 1);
+        (uint128 lpTokenPrice, uint32 zzz) = ethDaiLPOracle.seek();         //get new eth-dai lp price from uniswap
+        //assertEq(uint256(lpTokenPrice), 1);
     }
 
     function test_seek_usdc() public {
-        hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
         hevm.store(
             address(ETH_ORACLE),
-            keccak256(abi.encode(address(ethUsdcLPOracle), uint256(5))), // Whitelist oracle
+            keccak256(abi.encode(address(ethUsdcLPOracle), uint256(5))),    //whitelist oracle
             bytes32(uint256(1))
         );
-
-        (uint128 lpTokenPrice, uint32 zzz) = ethUsdcLPOracle.seek();
-
-        assertEq(uint256(lpTokenPrice), 1);
+        (uint128 lpTokenPrice, uint32 zzz) = ethUsdcLPOracle.seek();        //get new eth-usdc lp price from uniswap
+        //assertEq(uint256(lpTokenPrice), 1);
     }
 
     function test_seek_internals() public {
@@ -168,19 +165,28 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(token1Price > 0);
         //  -- END Test 4 --  //
 
+        // -- BEGIN TEST 5 -- //
+        assertTrue(token0Price > 0);
+        assertTrue(token1Price > 0);
+        //  -- END Test 5 --  //
+
         uint normReserve0 = sqrt(wmul(k, wdiv(token1Price, token0Price)));      // Get token0 balance (WAD)
         uint normReserve1 = wdiv(k, normReserve0) / WAD;                        // Get token1 balance; gas-savings
 
-        // -- BEGIN TEST 5 -- //
+        // -- BEGIN TEST 6 -- //
         //verify normalized reserve are within 1% margin of actual reserves
         //during times of high price volatility this condition may not hold
         assertTrue(normReserve0 > 0);
         assertTrue(normReserve1 > 0);
-        //assertTrue(mul(uint(_reserve0), 99) < mul(normReserve0, 100));
-        //assertTrue(mul(normReserve0, 100) < mul(uint(_reserve0), 101));
-        //  -- END Test 5 --  //
+        assertTrue(mul(uint(_reserve0), 99) < mul(normReserve0, 100));
+        assertTrue(mul(normReserve0, 100) < mul(uint(_reserve0), 101));
+        //  -- END Test 6 --  //
 
         uint lpTokenSupply = ERC20Like(ETH_USDC_UNI_POOL).totalSupply();        // Get LP token supply
+
+        // -- BEGIN TEST 7 -- //
+        assertTrue(lpTokenSupply > 0);
+        //  -- END Test 7 --  //
 
         uint128 lpTokenPrice = uint128(
             wdiv(
@@ -191,17 +197,110 @@ contract UNIV2LPOracleTest is DSTest {
                 lpTokenSupply // (WAD)
             )
         );
+
         uint32 zzz = _blockTimestampLast; // Update timestamp
+
+        // -- BEGIN TEST 8 -- //
+        assertTrue(zzz > 0);
+        //  -- END Test 8 --  //
 
         ///////////////////////////////////////
         //                                   //
         //         End seek() excerpt        //
         //                                   //
         ///////////////////////////////////////
-
     }
 
     function test_poke() public {
+        //check that current and next price are 0
+        (uint128 curVal, uint128 curHas) = ethDaiLPOracle.cur();
+        assertEq(uint256(curVal), 0);
+        assertEq(uint256(curHas), 0);
+        (uint128 nxtVal, uint128 nxtHas) = ethDaiLPOracle.nxt();
+        assertEq(uint256(nxtVal), 0);
+        assertEq(uint256(nxtHas), 0);
+
+        //check timestamp is 0
+        assertEq(uint256(ethDaiLPOracle.zzz()), 0);
+
+        //execute poke
         ethDaiLPOracle.poke();
+
+        //verify that cur has not been set
+        (curVal, curHas) = ethDaiLPOracle.cur();
+        assertEq(uint256(curVal), 0);
+        assertEq(uint256(curHas), 0);
+
+        //verify that nxt has been set
+        (nxtVal, nxtHas) = ethDaiLPOracle.nxt();
+        assertTrue(nxtVal > 0);
+        assertEq(uint256(nxtHas), 1);
+
+        //verify timestamp set
+        assertTrue(ethDaiLPOracle.zzz() > 0);
+    }
+
+    function testFail_double_poke() public {
+        ethDaiLPOracle.poke();                                  //poke oracle
+        ethDaiLPOracle.poke();                                  //poke oracle again w/o hop time elapsed
+        (uint128 curVal, uint128 curHas) = ethDaiLPOracle.cur();    //get current oracle value
+        assertEq(uint256(curHas), 1);                           //verify oracle has current value
+        assertTrue(uint256(curVal) > 0);                        //verify oracle has valid current value
+    }
+
+    function test_double_poke() public {
+        ethDaiLPOracle.poke();                                  //poke oracle
+        //hevm.store(
+        //    address(ethDaiLPOracle),
+        //    bytes32(uint256(0x90)),
+        //    bytes32(uint256(sub(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop())))
+        //);
+        hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop())); //time travel into the future
+        ethDaiLPOracle.poke();                                  //poke oracle again
+
+    }
+
+    function test_change() public {
+        assertEq(ethDaiLPOracle.src(), ETH_DAI_UNI_POOL);       //verify source is ETH-DAI pool
+        ethDaiLPOracle.change(ETH_USDC_UNI_POOL);               //change source to ETH-USDC pool
+        assertEq(ethDaiLPOracle.src(), ETH_USDC_UNI_POOL);      //verify source is ETH-USDC pool
+    }
+
+    function test_pass() public {
+        assertTrue(ethDaiLPOracle.pass());                      //verify time interval `hop`has elapsed
+        ethDaiLPOracle.poke();                                  //poke oracle
+        hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop())); //time travel into the future
+        assertTrue(ethDaiLPOracle.pass());                      //verify time interval `hop` has elapsed
+    }
+
+    function testFail_pass() public {
+        ethDaiLPOracle.poke();                                  //poke oracle
+        assertTrue(ethDaiLPOracle.pass());                      //fail pass
+    }
+
+    function testFail_whitelist_peep() public {
+        ethDaiLPOracle.poke();                                  //poke oracle
+        (bytes32 val, bool has) = ethDaiLPOracle.peep();        //peep oracle price without caller being whitelisted
+    }
+
+    function test_whitelist_peep() public {
+        ethDaiLPOracle.poke();                                  //poke oracle
+        ethDaiLPOracle.kiss(address(this));                     //white caller
+        (bytes32 val, bool has) = ethDaiLPOracle.peep();        //view queued oracle price
+        assertTrue(has);                                        //verify oracle has value
+        assertTrue(val != bytes32(0));                          //verify people returned valid value
+    }
+
+    function test_kiss_single() public {
+        assertTrue(ethDaiLPOracle.bud(address(this)) == 0);     //verify caller is not whitelisted
+        ethDaiLPOracle.kiss(address(this));                     //whitelist caller
+        assertTrue(ethDaiLPOracle.bud(address(this)) == 1);     //verify caller is whitelisted
+    }
+
+    function test_diss_single() public {
+        ethDaiLPOracle.kiss(address(this));                     //whitelist caller
+        assertTrue(ethDaiLPOracle.bud(address(this)) == 1);     //verify caller is whitelisted
+        ethDaiLPOracle.diss(address(this));                     //remove caller from whitelist
+        assertTrue(ethDaiLPOracle.bud(address(this)) == 0);     //verify caller is not whitelisted
     }
 }

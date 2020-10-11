@@ -192,7 +192,7 @@ contract UNIV2LPOracle {
 
     modifier toll { require(bud[msg.sender] == 1, "UNIV2LPOracle/contract-not-whitelisted"); _; }
 
-    event LogValue(uint128 val);
+    event LogValue(uint128 curVal, uint128 nxtVal);
     event Debug(uint i, uint val);
 
     constructor (address _src, bytes32 _wat, address _token0Oracle, address _token1Oracle) public {
@@ -245,16 +245,19 @@ contract UNIV2LPOracle {
 
         // All Oracle prices are priced with 18 decimals against USD
         uint token0Price = OracleLike(token0Oracle).read(); // Query token0 price from oracle (WAD)
+        require(token0Price != 0, "UNIV2LPOracle/invalid-oracle-0-price");
         emit Debug(3, token0Price);
         uint token1Price = OracleLike(token1Oracle).read(); // Query token1 price from oracle (WAD)
+        require(token1Price != 0, "UNIV2LPOracle/invalid-oracle-1-price");
         emit Debug(4, token1Price);
 
-        uint normReserve0 = sqrt(wmul(k, wdiv(token1Price, token0Price)));  // Get token0 balance (WAD)
+        uint normReserve0 = sqrt(wmul(k, wdiv(token1Price, token0Price)));  // Get normalized token0 balance (WAD)
         emit Debug(20, normReserve0);
-        uint normReserve1 = wdiv(k, normReserve0) / WAD;                    // Get token1 balance; gas-savings
+        uint normReserve1 = wdiv(k, normReserve0) / WAD;                    // Get normalized token1 balance; gas-savings
         emit Debug(21, normReserve1);
 
         uint lpTokenSupply = ERC20Like(src).totalSupply();                  // Get LP token supply
+        require(lpTokenSupply != 0, "UNIVPLPOracle/invalid-lp-token-supply");
         emit Debug(5, lpTokenSupply);
 
         lpTokenPrice_ = uint128(
@@ -277,7 +280,7 @@ contract UNIV2LPOracle {
         cur = nxt;
         nxt = Feed(uint128(_val), 1);
         zzz = _zzz;
-        emit LogValue(cur.val);
+        emit LogValue(cur.val, nxt.val);
     }
 
     function peek() external view toll returns (bytes32,bool) {
