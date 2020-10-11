@@ -288,7 +288,24 @@ contract UNIV2LPOracleTest is DSTest {
         ethDaiLPOracle.kiss(address(this));                     //white caller
         (bytes32 val, bool has) = ethDaiLPOracle.peep();        //view queued oracle price
         assertTrue(has);                                        //verify oracle has value
-        assertTrue(val != bytes32(0));                          //verify people returned valid value
+        assertTrue(val != bytes32(0));                          //verify peep returned valid value
+    }
+
+    function testFail_whitelist_peek() public {
+        ethDaiLPOracle.poke();                                  //poke oracle
+        hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop())); //time travel into the future
+        ethDaiLPOracle.poke();                                  //poke oracle again
+        (bytes32 val, bool has) = ethDaiLPOracle.peek();        //peek oracle price without caller being whitelisted
+    }
+
+    function test_whitelist_peek() public {
+        ethDaiLPOracle.poke();                                  //poke oracle
+        hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop())); //time travel into the future
+        ethDaiLPOracle.poke();                                  //poke oracle again
+        ethDaiLPOracle.kiss(address(this));                     //whitelist caller
+        (bytes32 val, bool has) = ethDaiLPOracle.peek();        //peek oracle price without caller being whitelisted
+        assertTrue(has);                                        //verify oracle has value
+        assertTrue(val != bytes32(0));                          //verify peep returned valid value
     }
 
     function test_kiss_single() public {

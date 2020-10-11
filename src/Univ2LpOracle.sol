@@ -57,8 +57,6 @@
 
 pragma solidity ^0.5.12;
 
-import "./UQ112x112.sol";
-
 interface ERC20Like {
     function decimals() external view returns (uint8);
     function balanceOf(address) external view returns (uint256);
@@ -115,8 +113,6 @@ contract UNIV2LPOracleFactory {
 }
 
 contract UNIV2LPOracle {
-
-    using UQ112x112 for uint224;
 
 	// --- Auth ---
     mapping (address => uint) public wards;                         //addresses with admin authority
