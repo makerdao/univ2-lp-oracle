@@ -68,8 +68,8 @@ contract UNIV2LPOracleTest is DSTest {
 
         factory = new UNIV2LPOracleFactory();
 
-        ethDaiLPOracle = new UNIV2LPOracle(ETH_DAI_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);
-        ethUsdcLPOracle = new UNIV2LPOracle(ETH_USDC_UNI_POOL, poolNameUSDC, USDC_ORACLE, ETH_ORACLE);
+        ethDaiLPOracle = UNIV2LPOracle(factory.build(ETH_DAI_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE));
+        ethUsdcLPOracle = UNIV2LPOracle(factory.build(ETH_USDC_UNI_POOL, poolNameUSDC, USDC_ORACLE, ETH_ORACLE));
 
         //whitelist ethDaiLP on ETH Oracle
         hevm.store(
@@ -90,27 +90,26 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_build() public {
-        address oracle = factory.build(ETH_DAI_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);     //build new oracle instance
-        assertTrue(oracle != address(0));                                   //verify oracle deployed successfully 
-        assertEq(UNIV2LPOracle(oracle).wards(address(this)), 1);            //verify caller is owner
-        assertEq(UNIV2LPOracle(oracle).src(), ETH_DAI_UNI_POOL);            //verify uni pool is source
-        assertEq(UNIV2LPOracle(oracle).token0Oracle(), USDC_ORACLE);        //verify oracle configured correctly
-        assertEq(UNIV2LPOracle(oracle).token1Oracle(), ETH_ORACLE);         //verify oracle configured correctly
-        assertEq(UNIV2LPOracle(oracle).stopped(), 0);                       //verify contract is active
-        assertTrue(factory.isOracle(oracle));                               //verify factory recorded oracle
+        UNIV2LPOracle oracle = ethDaiLPOracle;
+        assertTrue(address(ethDaiLPOracle) != address(0));                  //verify oracle deployed successfully 
+        assertEq(oracle.wards(address(this)), 1);                           //verify caller is owner
+        assertEq(oracle.src(), ETH_DAI_UNI_POOL);                           //verify uni pool is source
+        assertEq(oracle.token0Oracle(), USDC_ORACLE);                       //verify oracle configured correctly
+        assertEq(oracle.token1Oracle(), ETH_ORACLE);                        //verify oracle configured correctly
+        assertEq(oracle.stopped(), 0);                                      //verify contract is active
+        assertTrue(factory.isOracle(address(oracle)));                      //verify factory recorded oracle
 
         address token0 = UniswapV2PairLike(ETH_DAI_UNI_POOL).token0();      //lookup token 0 address
         address token1 = UniswapV2PairLike(ETH_DAI_UNI_POOL).token1();      //lookup token 1 address
-        assertEq(factory.register(token0,token1), oracle);                  //verify factory recorded oracle in register
+        assertEq(factory.register(token0,token1), address(oracle));         //verify factory recorded oracle in register
     }
 
     function testFail_build() public {
-        factory.build(ETH_DAI_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);  //build new oracle instance
         factory.build(ETH_DAI_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);  //attempt to build oracle for same pool
     }
 
     function test_delist() public {
-        address oracle = factory.build(ETH_DAI_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);     //build new oracle instance
+        address oracle = address(ethDaiLPOracle);
         assertTrue(factory.isOracle(oracle));                               //verify factory recorded oracle
         factory.delist(oracle);                                             //remove oracle from factory register
         assertTrue(!factory.isOracle(oracle));                              //verify oracle isn't registered
