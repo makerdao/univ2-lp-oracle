@@ -17,7 +17,7 @@
 
 ///////////////////////////////////////////////////////
 //                                                   //
-//    Methodology for caclulating LP Token Price     //
+//    Methodology for calculating LP Token Price     //
 //                                                   //
 ///////////////////////////////////////////////////////
 
@@ -92,6 +92,10 @@ contract UNIV2LPOracleFactory {
 
     event Created(address sender, address oracle, address token0, address token1, bytes32 name);
 
+    constructor () public {
+        wards[msg.sender] = 1;
+    }
+
     function build(address UNIV2LP, bytes32 wat, address token0Oracle, address token1Oracle) public returns (address oracle) {
         address token0 = UniswapV2PairLike(UNIV2LP).token0();
         address token1 = UniswapV2PairLike(UNIV2LP).token1();
@@ -99,6 +103,7 @@ contract UNIV2LPOracleFactory {
         oracle = address(new UNIV2LPOracle(UNIV2LP, wat, token0Oracle, token1Oracle));
         register[token0][token1] = oracle;
         isOracle[oracle] = true;
+        UNIV2LPOracle(oracle).rely(msg.sender);
         emit Created(msg.sender, oracle, token0, token1, wat);
     }
 

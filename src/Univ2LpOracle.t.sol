@@ -50,6 +50,7 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     Hevm          hevm;
+    UNIV2LPOracleFactory factory;
     UNIV2LPOracle ethDaiLPOracle;
     UNIV2LPOracle ethUsdcLPOracle;
 
@@ -65,6 +66,8 @@ contract UNIV2LPOracleTest is DSTest {
     function setUp() public {
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
+        factory = new UNIV2LPOracleFactory();
+
         ethDaiLPOracle = new UNIV2LPOracle(ETH_DAI_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);
         ethUsdcLPOracle = new UNIV2LPOracle(ETH_USDC_UNI_POOL, poolNameUSDC, USDC_ORACLE, ETH_ORACLE);
 
@@ -76,7 +79,58 @@ contract UNIV2LPOracleTest is DSTest {
         );
     }
 
-     function test_constructor() public {
+    ///////////////////////////////////////////////////////
+    //                                                   //
+    //                  Factory tests                    //
+    //                                                   //
+    ///////////////////////////////////////////////////////
+
+    function test_constructor() public {
+        assertEq(factory.wards(address(this)), 1);
+    }
+
+    function test_build() public {
+        address oracle = factory.build(ETH_DAI_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);     //build new oracle instance
+        assertTrue(oracle != address(0));                                   //verify oracle deployed successfully 
+        assertEq(UNIV2LPOracle(oracle).wards(address(this)), 1);            //verify caller is owner
+        assertEq(UNIV2LPOracle(oracle).src(), ETH_DAI_UNI_POOL);            //verify uni pool is source
+        assertEq(UNIV2LPOracle(oracle).token0Oracle(), USDC_ORACLE);        //verify oracle configured correctly
+        assertEq(UNIV2LPOracle(oracle).token1Oracle(), ETH_ORACLE);         //verify oracle configured correctly
+        assertEq(UNIV2LPOracle(oracle).stopped(), 0);                       //verify contract is active
+        assertTrue(factory.isOracle(oracle));                               //verify factory recorded oracle
+
+        address token0 = UniswapV2PairLike(ETH_DAI_UNI_POOL).token0();      //lookup token 0 address
+        address token1 = UniswapV2PairLike(ETH_DAI_UNI_POOL).token1();      //lookup token 1 address
+        assertEq(factory.register(token0,token1), oracle);                  //verify factory recorded oracle in register
+    }
+
+    function testFail_build() public {
+        factory.build(ETH_DAI_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);  //build new oracle instance
+        factory.build(ETH_DAI_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);  //attempt to build oracle for same pool
+    }
+
+    function test_delist() public {
+        address oracle = factory.build(ETH_DAI_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);     //build new oracle instance
+        assertTrue(factory.isOracle(oracle));                               //verify factory recorded oracle
+        factory.delist(oracle);                                             //remove oracle from factory register
+        assertTrue(!factory.isOracle(oracle));                              //verify oracle isn't registered
+
+        address token0 = UniswapV2PairLike(ETH_DAI_UNI_POOL).token0();      //lookup token 0 address
+        address token1 = UniswapV2PairLike(ETH_DAI_UNI_POOL).token1();      //lookup token 1 address
+        assertEq(factory.register(token0,token1), address(0));              //verify oracle isn't registered
+    }
+
+    function testFail_delist() public {
+        factory.delist(address(0));                                         //attempt to delist non-oracle address
+    }
+
+    ///////////////////////////////////////////////////////
+    //                                                   //
+    //                   Oracle tests                    //
+    //                                                   //
+    ///////////////////////////////////////////////////////
+
+    function test_oracle_constructor() public {
         assertEq(ethDaiLPOracle.src(), ETH_DAI_UNI_POOL);                   //verify source is ETH-DAI pool
         assertEq(ethDaiLPOracle.token0Oracle(), USDC_ORACLE);               //verify token 0 oracle is USDC oracle
         assertEq(ethDaiLPOracle.token1Oracle(), ETH_ORACLE);                //verify token 1 oracle is ETH oracle
@@ -100,9 +154,6 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_seek_internals() public {
-        //This is necessary to test a bunch of the variables in memory
-
-        hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
         hevm.store(
             address(ETH_ORACLE),
             keccak256(abi.encode(address(this), uint256(5))), // Whitelist oracle
@@ -114,7 +165,7 @@ contract UNIV2LPOracleTest is DSTest {
         //        Begin seek() excerpt       //
         //                                   //
         ///////////////////////////////////////
-
+        //This is necessary to test a bunch of the variables in memory
         //slight modifications
 
         UniswapV2PairLike(ETH_USDC_UNI_POOL).sync();
@@ -308,10 +359,35 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(val != bytes32(0));                          //verify peep returned valid value
     }
 
+    function test_whitelist_read() public {
+        ethDaiLPOracle.poke();                                  //poke oracle
+        hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop())); //time travel into the future
+        ethDaiLPOracle.poke();                                  //poke oracle again
+        ethDaiLPOracle.kiss(address(this));                     //whitelist caller
+        bytes32 val = ethDaiLPOracle.read();                    //read oracle price
+        assertTrue(val != bytes32(0));                          //verify read returned valid value
+    }
+
+    function testFail_whitelist_read() public {
+        ethDaiLPOracle.poke();                                  //poke oracle
+        hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop())); //time travel into the future
+        ethDaiLPOracle.poke();                                  //poke oracle again
+        bytes32 val = ethDaiLPOracle.read();                    //attempt to read oracle value
+    }
+
     function test_kiss_single() public {
         assertTrue(ethDaiLPOracle.bud(address(this)) == 0);     //verify caller is not whitelisted
         ethDaiLPOracle.kiss(address(this));                     //whitelist caller
         assertTrue(ethDaiLPOracle.bud(address(this)) == 1);     //verify caller is whitelisted
+    }
+
+    function testFail_kiss() public {
+        ethDaiLPOracle.deny(address(this));                     //remove owner
+        ethDaiLPOracle.kiss(address(this));                     //attempt to whitelist caller
+    }
+
+    function testFail_kiss2() public {
+        ethDaiLPOracle.kiss(address(0));                        //attempt to whitelist 0 address
     }
 
     function test_diss_single() public {
@@ -319,5 +395,10 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(ethDaiLPOracle.bud(address(this)) == 1);     //verify caller is whitelisted
         ethDaiLPOracle.diss(address(this));                     //remove caller from whitelist
         assertTrue(ethDaiLPOracle.bud(address(this)) == 0);     //verify caller is not whitelisted
+    }
+
+    function testFail_diss() public {
+        ethDaiLPOracle.deny(address(this));                     //remove owner
+        ethDaiLPOracle.diss(address(this));                     //attempt to remove caller from whitelist
     }
 }
