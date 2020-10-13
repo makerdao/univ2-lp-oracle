@@ -49,19 +49,18 @@ contract UNIV2LPOracleTest is DSTest {
         }
     }
 
-    Hevm          hevm;
-    UNIV2LPOracleFactory factory;
-    UNIV2LPOracle ethDaiLPOracle;
-    UNIV2LPOracle ethUsdcLPOracle;
+    Hevm                    hevm;
+    UNIV2LPOracleFactory    factory;
+    UNIV2LPOracle           ethDaiLPOracle;
+    UNIV2LPOracle           ethUsdcLPOracle;
 
-    address constant ETH_DAI_UNI_POOL = 0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11;
-    address constant ETH_ORACLE       = 0x81FE72B5A8d1A857d176C3E7d5Bd2679A9B85763;
-    address constant USDC_ORACLE      = 0x77b68899b99b686F415d074278a9a16b336085A0; // Using in place for DAI price
+    address constant        ETH_DAI_UNI_POOL = 0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11;
+    address constant        ETH_ORACLE       = 0x81FE72B5A8d1A857d176C3E7d5Bd2679A9B85763;
+    address constant        USDC_ORACLE      = 0x77b68899b99b686F415d074278a9a16b336085A0;
+    address constant        ETH_USDC_UNI_POOL = 0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc;
 
-    address constant ETH_USDC_UNI_POOL = 0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc;
-
-    bytes32 poolNameDAI = "ETH-DAI-UNIV2-LP";
-    bytes32 poolNameUSDC = "ETH-USDC-UNIV2-LP";
+    bytes32 constant        poolNameDAI = "ETH-DAI-UNIV2-LP";
+    bytes32 constant        poolNameUSDC = "ETH-USDC-UNIV2-LP";
 
     function setUp() public {
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
@@ -139,6 +138,7 @@ contract UNIV2LPOracleTest is DSTest {
 
     function test_seek_dai() public {
         (uint128 lpTokenPrice, uint32 zzz) = ethDaiLPOracle.seek();         //get new eth-dai lp price from uniswap
+        assertTrue(zzz > uint32(0));
         //assertEq(uint256(lpTokenPrice), 1);
     }
 
@@ -149,6 +149,7 @@ contract UNIV2LPOracleTest is DSTest {
             bytes32(uint256(1))
         );
         (uint128 lpTokenPrice, uint32 zzz) = ethUsdcLPOracle.seek();        //get new eth-usdc lp price from uniswap
+        assertTrue(zzz > uint32(0));
         //assertEq(uint256(lpTokenPrice), 1);
     }
 
@@ -331,6 +332,8 @@ contract UNIV2LPOracleTest is DSTest {
     function testFail_whitelist_peep() public {
         ethDaiLPOracle.poke();                                  //poke oracle
         (bytes32 val, bool has) = ethDaiLPOracle.peep();        //peep oracle price without caller being whitelisted
+        assertTrue(has);                                        //verify oracle has value
+        assertTrue(val != bytes32(0));                         //verify peep returned value
     }
 
     function test_whitelist_peep() public {
@@ -346,6 +349,8 @@ contract UNIV2LPOracleTest is DSTest {
         hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop())); //time travel into the future
         ethDaiLPOracle.poke();                                  //poke oracle again
         (bytes32 val, bool has) = ethDaiLPOracle.peek();        //peek oracle price without caller being whitelisted
+        assertTrue(has);                                        //verify oracle has value
+        assertTrue(val > bytes32(0));                           //verify peek returned value
     }
 
     function test_whitelist_peek() public {
@@ -371,7 +376,7 @@ contract UNIV2LPOracleTest is DSTest {
         ethDaiLPOracle.poke();                                  //poke oracle
         hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop())); //time travel into the future
         ethDaiLPOracle.poke();                                  //poke oracle again
-        bytes32 val = ethDaiLPOracle.read();                    //attempt to read oracle value
+        ethDaiLPOracle.read();                                  //attempt to read oracle value
     }
 
     function test_kiss_single() public {
