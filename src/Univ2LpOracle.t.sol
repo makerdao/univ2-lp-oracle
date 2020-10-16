@@ -1,4 +1,4 @@
-pragma solidity ^0.5.12;
+pragma solidity ^0.6.7;
 
 import "ds-test/test.sol";
 
@@ -67,8 +67,18 @@ contract UNIV2LPOracleTest is DSTest {
 
         factory = new UNIV2LPOracleFactory();
 
-        ethDaiLPOracle = UNIV2LPOracle(factory.build(ETH_DAI_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE));
-        ethUsdcLPOracle = UNIV2LPOracle(factory.build(ETH_USDC_UNI_POOL, poolNameUSDC, USDC_ORACLE, ETH_ORACLE));
+        ethDaiLPOracle = UNIV2LPOracle(factory.build(
+            ETH_DAI_UNI_POOL,
+            poolNameDAI,
+            USDC_ORACLE,
+            ETH_ORACLE)
+        );
+        ethUsdcLPOracle = UNIV2LPOracle(factory.build(
+            ETH_USDC_UNI_POOL,
+            poolNameUSDC,
+            USDC_ORACLE,
+            ETH_ORACLE)
+        );
 
         //whitelist ethDaiLP on ETH Oracle
         hevm.store(
@@ -84,42 +94,47 @@ contract UNIV2LPOracleTest is DSTest {
     //                                                   //
     ///////////////////////////////////////////////////////
 
-    function test_constructor() public {
-        assertEq(factory.wards(address(this)), 1);
-    }
-
     function test_build() public {
-        UNIV2LPOracle oracle = ethDaiLPOracle;
-        assertTrue(address(ethDaiLPOracle) != address(0));                  //verify oracle deployed successfully 
-        assertEq(oracle.wards(address(this)), 1);                           //verify caller is owner
-        assertEq(oracle.src(), ETH_DAI_UNI_POOL);                           //verify uni pool is source
-        assertEq(oracle.token0Oracle(), USDC_ORACLE);                       //verify oracle configured correctly
-        assertEq(oracle.token1Oracle(), ETH_ORACLE);                        //verify oracle configured correctly
-        assertEq(oracle.stopped(), 0);                                      //verify contract is active
-        assertTrue(factory.isOracle(address(oracle)));                      //verify factory recorded oracle
-
-        address token0 = UniswapV2PairLike(ETH_DAI_UNI_POOL).token0();      //lookup token 0 address
-        address token1 = UniswapV2PairLike(ETH_DAI_UNI_POOL).token1();      //lookup token 1 address
-        assertEq(factory.register(token0,token1), address(oracle));         //verify factory recorded oracle in register
+        UNIV2LPOracle oracle = UNIV2LPOracle(factory.build(
+            ETH_DAI_UNI_POOL,
+            poolNameDAI,
+            USDC_ORACLE,
+            ETH_ORACLE)
+        );                                                      //deploy new LP oracle
+        assertTrue(address(ethDaiLPOracle) != address(0));      //verify oracle deployed successfully 
+        assertEq(oracle.wards(address(this)), 1);               //verify caller is owner
+        assertEq(oracle.src(), ETH_DAI_UNI_POOL);               //verify uni pool is source
+        assertEq(oracle.orb0(), USDC_ORACLE);                   //verify oracle configured correctly
+        assertEq(oracle.orb1(), ETH_ORACLE);                    //verify oracle configured correctly
+        assertEq(oracle.stopped(), 0);                          //verify contract is active
+        assertTrue(factory.isOracle(address(oracle)));          //verify factory recorded oracle
     }
 
-    function testFail_build() public {
-        factory.build(ETH_DAI_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);  //attempt to build oracle for same pool
+    function testFail_build_invalid_pool() public {
+        factory.build(
+            address(0),
+            poolNameDAI,
+            USDC_ORACLE,
+            ETH_ORACLE
+        );                                                      //attempt to deploy new LP oracle
     }
 
-    function test_delist() public {
-        address oracle = address(ethDaiLPOracle);
-        assertTrue(factory.isOracle(oracle));                               //verify factory recorded oracle
-        factory.delist(oracle);                                             //remove oracle from factory register
-        assertTrue(!factory.isOracle(oracle));                              //verify oracle isn't registered
-
-        address token0 = UniswapV2PairLike(ETH_DAI_UNI_POOL).token0();      //lookup token 0 address
-        address token1 = UniswapV2PairLike(ETH_DAI_UNI_POOL).token1();      //lookup token 1 address
-        assertEq(factory.register(token0,token1), address(0));              //verify oracle isn't registered
+    function testFail_build_invalid_oracle() public {
+        factory.build(
+            ETH_DAI_UNI_POOL,
+            poolNameDAI,
+            USDC_ORACLE,
+            address(0)
+        );                                                      //attempt to deploy new LP oracle
     }
 
-    function testFail_delist() public {
-        factory.delist(address(0));                                         //attempt to delist non-oracle address
+    function testFail_build_invalid_oracle2() public {
+        factory.build(
+            ETH_DAI_UNI_POOL,
+            poolNameDAI,
+            address(0),
+            ETH_ORACLE
+        );                                                      //attempt to deploy new LP oracle
     }
 
     ///////////////////////////////////////////////////////
@@ -129,11 +144,11 @@ contract UNIV2LPOracleTest is DSTest {
     ///////////////////////////////////////////////////////
 
     function test_oracle_constructor() public {
-        assertEq(ethDaiLPOracle.src(), ETH_DAI_UNI_POOL);                   //verify source is ETH-DAI pool
-        assertEq(ethDaiLPOracle.token0Oracle(), USDC_ORACLE);               //verify token 0 oracle is USDC oracle
-        assertEq(ethDaiLPOracle.token1Oracle(), ETH_ORACLE);                //verify token 1 oracle is ETH oracle
-        assertEq(ethDaiLPOracle.wards(address(this)), 1);                   //verify owner
-        assertEq(ethDaiLPOracle.stopped(), 0);                              //verify contract active
+        assertEq(ethDaiLPOracle.src(), ETH_DAI_UNI_POOL);       //verify source is ETH-DAI pool
+        assertEq(ethDaiLPOracle.orb0(), USDC_ORACLE);           //verify token 0 oracle is USDC oracle
+        assertEq(ethDaiLPOracle.orb1(), ETH_ORACLE);            //verify token 1 oracle is ETH oracle
+        assertEq(ethDaiLPOracle.wards(address(this)), 1);       //verify owner
+        assertEq(ethDaiLPOracle.stopped(), 0);                  //verify contract active
     }
 
     function test_seek_dai() public {
@@ -166,94 +181,88 @@ contract UNIV2LPOracleTest is DSTest {
         //                                   //
         ///////////////////////////////////////
         //This is necessary to test a bunch of the variables in memory
-        //slight modifications
+        //slight modifications to seek()
 
         UniswapV2PairLike(ETH_USDC_UNI_POOL).sync();
-
-        (uint112 _reserve0, uint112 _reserve1, uint32 _blockTimestampLast) = UniswapV2PairLike(ETH_USDC_UNI_POOL).getReserves();  //pull reserves
-        require(_blockTimestampLast == block.timestamp);
+        (
+            uint112 res0,
+            uint112 res1,
+            uint32 ts
+        ) = UniswapV2PairLike(ETH_USDC_UNI_POOL).getReserves();                     //get reserves of token0 and token1 in liquidity pool
+        require(ts == block.timestamp);                                             //verify timestamp is current block (due to sync)
 
         // -- BEGIN TEST 1 -- //
         //Get token addresses of LP contract
-        address token0 = UniswapV2PairLike(ETH_USDC_UNI_POOL).token0();
-        address token1 = UniswapV2PairLike(ETH_USDC_UNI_POOL).token1();
-
-        //Verify token balances of LP contract match balances returned by getReserves()
-        assertEq(_reserve0, ERC20Like(token0).balanceOf(ETH_USDC_UNI_POOL));
-        assertEq(_reserve1, ERC20Like(token1).balanceOf(ETH_USDC_UNI_POOL));
+        address tok0 = UniswapV2PairLike(ETH_USDC_UNI_POOL).token0();               //get token0 of liquidy pool
+        address tok1 = UniswapV2PairLike(ETH_USDC_UNI_POOL).token1();               //get token1 of liquidity pool
+        assertEq(res0, ERC20Like(tok0).balanceOf(ETH_USDC_UNI_POOL));               //verify reserve of token0 matches balance of contract
+        assertEq(res1, ERC20Like(tok1).balanceOf(ETH_USDC_UNI_POOL));               //verify reserve of token1 matches balances of contract
         //  -- END Test 1 --  //
 
         // adjust reserves w/ respect to decimals
-        if (ethUsdcLPOracle.token0Decimals() != uint8(18)) {
-            _reserve0 = uint112(_reserve0 * 10 ** sub(18, ethUsdcLPOracle.token0Decimals()));
+        if (ethUsdcLPOracle.dec0() != uint8(18)) {                                  //check if token0 has non-standard decimals
+            res0 = uint112(res0 * 10 ** sub(18, ethUsdcLPOracle.dec0()));           //adjust reserves of token0
         }
-        if (ethUsdcLPOracle.token1Decimals() != uint8(18)) {
-            _reserve1 = uint112(_reserve1 * 10 ** sub(18, ethUsdcLPOracle.token1Decimals()));
+        if (ethUsdcLPOracle.dec1() != uint8(18)) {                                  //check if token1 has non-standard decimals
+            res1 = uint112(res1 * 10 ** sub(18, ethUsdcLPOracle.dec1()));           //adjust reserve of token1
         }
 
         // -- BEGIN TEST 2 -- //
-        //Verify reserve decimal adjustment
-        assertEq(_reserve1, ERC20Like(token1).balanceOf(ETH_USDC_UNI_POOL));    //if condition not entered for WETH (18 decimals)
-        assertTrue(_reserve0 > ERC20Like(token0).balanceOf(ETH_USDC_UNI_POOL));     //if condition entered for USDC (6 decimals)
-        assertEq(_reserve0 / 10 ** 12, ERC20Like(token0).balanceOf(ETH_USDC_UNI_POOL));     //verify decimal adjustment behaves correctly
+        assertEq(res1, ERC20Like(tok1).balanceOf(ETH_USDC_UNI_POOL));               //verify no adjustment for WETH (18 decimals)
+        assertTrue(res0 > ERC20Like(tok0).balanceOf(ETH_USDC_UNI_POOL));            //verify reserve adjustment for  USDC (6 decimals)
+        assertEq(res1 / 10 ** 12, ERC20Like(tok0).balanceOf(ETH_USDC_UNI_POOL));    //verify decimal adjustment behaves correctly
         //  -- END Test 2 --  //
 
-        uint k = mul(_reserve0, _reserve1);                 // Calculate constant product invariant k (WAD * WAD)
+        uint k = mul(res0, res1);                               //calculate constant product invariant k (WAD * WAD)
 
         // -- BEGIN TEST 3 -- //
-        assertTrue(k > _reserve0);
-        assertTrue(k > _reserve1);
-        assertEq(div(k, _reserve0), _reserve1);
-        assertEq(div(k, _reserve1), _reserve0);
+        assertTrue(k > res0);                                   //verify k is greater than reserve of token0
+        assertTrue(k > res1);                                   //verify k is greater than reserve of token1
+        assertEq(div(k, res0), res1);                           //verify k calculation behaves correctly
+        assertEq(div(k, res1), res0);                           //verify k calculation behaves correctly
         //  -- END Test 3 --  //
 
-        // All Oracle prices are priced with 18 decimals against USD
-        uint token0Price = OracleLike(ethUsdcLPOracle.token0Oracle()).read();   // Query token0 price from oracle (WAD)
-        uint token1Price = OracleLike(ethUsdcLPOracle.token1Oracle()).read();   // Query token1 price from oracle (WAD)
+        uint val0 = OracleLike(ethUsdcLPOracle.orb0()).read();  //query token0 price from oracle (WAD)
+        uint val1 = OracleLike(ethUsdcLPOracle.orb1()).read();  //query token1 price from oracle (WAD)
 
         // -- BEGIN TEST 4 -- //
-        assertTrue(token0Price > 0);
-        assertTrue(token1Price > 0);
+        assertTrue(val0 > 0);                                   //verify token0 price is valid
+        assertTrue(val1 > 0);                                   //verify token1 price is valid
         //  -- END Test 4 --  //
 
+        uint bal0 = sqrt(wmul(k, wdiv(val1, val0)));            //calculate normalized token0 balance (WAD)
+        uint bal1 = wdiv(k, bal0) / WAD;                        //calculate normalized token1 balance
+
         // -- BEGIN TEST 5 -- //
-        assertTrue(token0Price > 0);
-        assertTrue(token1Price > 0);
+        //verify normalized reserves are within 1% margin of actual reserves
+        //during times of high price volatility this condition may not hold
+        assertTrue(bal0 > 0);                                   //verify normalized token0 balance is valid
+        assertTrue(bal1 > 0);                                   //verify normalized token1 balance is valid
+        assertTrue(mul(uint(res0), 99) < mul(bal0, 100));       //verify normalized token0 balance is within 1% of token0 balance 
+        assertTrue(mul(bal0, 100) < mul(uint(res0), 101));      //verify normalized token0 balance is within 1% of token0 balance
+        assertTrue(mul(uint(res1), 99) < mul(bal1, 100));       //verify normalized token1 balance is within 1% of token1 balance 
+        assertTrue(mul(bal1, 100) < mul(uint(res1), 101));      //verify normalized token1 balance is within 1% of token1 balance
         //  -- END Test 5 --  //
 
-        uint normReserve0 = sqrt(wmul(k, wdiv(token1Price, token0Price)));      // Get token0 balance (WAD)
-        uint normReserve1 = wdiv(k, normReserve0) / WAD;                        // Get token1 balance; gas-savings
+        uint supply = ERC20Like(ETH_USDC_UNI_POOL).totalSupply();   //get LP token supply
 
         // -- BEGIN TEST 6 -- //
-        //verify normalized reserve are within 1% margin of actual reserves
-        //during times of high price volatility this condition may not hold
-        assertTrue(normReserve0 > 0);
-        assertTrue(normReserve1 > 0);
-        assertTrue(mul(uint(_reserve0), 99) < mul(normReserve0, 100));
-        assertTrue(mul(normReserve0, 100) < mul(uint(_reserve0), 101));
+        assertTrue(supply > 0);                                 //verify LP token supply is valid
         //  -- END Test 6 --  //
 
-        uint lpTokenSupply = ERC20Like(ETH_USDC_UNI_POOL).totalSupply();        // Get LP token supply
-
-        // -- BEGIN TEST 7 -- //
-        assertTrue(lpTokenSupply > 0);
-        //  -- END Test 7 --  //
-
-        uint128 lpTokenPrice = uint128(
+        uint128 quote = uint128(
             wdiv(
                 add(
-                    wmul(normReserve0, token0Price), // (WAD)
-                    wmul(normReserve1, token1Price)  // (WAD)
+                    wmul(bal0, val0), // (WAD)
+                    wmul(bal1, val1)  // (WAD)
                 ),
-                lpTokenSupply // (WAD)
+                supply // (WAD)
             )
-        );
+        );                                                      //calculate LP token price quote
 
-        uint32 zzz = _blockTimestampLast; // Update timestamp
-
-        // -- BEGIN TEST 8 -- //
-        assertTrue(zzz > 0);
-        //  -- END Test 8 --  //
+        // -- BEGIN TEST 7 -- //
+        assertTrue(quote > 0);                                  //verify LP token price quote is valid
+        //  -- END Test 7 --  //
 
         ///////////////////////////////////////
         //                                   //
@@ -263,52 +272,46 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_poke() public {
-        //check that current and next price are 0
-        (uint128 curVal, uint128 curHas) = ethDaiLPOracle.cur();
-        assertEq(uint256(curVal), 0);
-        assertEq(uint256(curHas), 0);
-        (uint128 nxtVal, uint128 nxtHas) = ethDaiLPOracle.nxt();
-        assertEq(uint256(nxtVal), 0);
-        assertEq(uint256(nxtHas), 0);
+        (uint128 curVal, uint128 curHas) = ethDaiLPOracle.cur();    //get current value
+        assertEq(uint256(curVal), 0);                           //verify oracle has no current value
+        assertEq(uint256(curHas), 0);                           //verify oracle has no current value
 
-        //check timestamp is 0
-        assertEq(uint256(ethDaiLPOracle.zzz()), 0);
+        (uint128 nxtVal, uint128 nxtHas) = ethDaiLPOracle.nxt();    //get queued value
+        assertEq(uint256(nxtVal), 0);                           //verify oracle has no queued price
+        assertEq(uint256(nxtHas), 0);                           //verify oracle has no queued price
 
-        //execute poke
-        ethDaiLPOracle.poke();
+        assertEq(uint256(ethDaiLPOracle.zzz()), 0);             //verify timestamp is 0
 
-        //verify that cur has not been set
-        (curVal, curHas) = ethDaiLPOracle.cur();
-        assertEq(uint256(curVal), 0);
-        assertEq(uint256(curHas), 0);
+        ethDaiLPOracle.poke();                                  //update oracle
 
-        //verify that nxt has been set
-        (nxtVal, nxtHas) = ethDaiLPOracle.nxt();
-        assertTrue(nxtVal > 0);
-        assertEq(uint256(nxtHas), 1);
+        (curVal, curHas) = ethDaiLPOracle.cur();                //get current value
+        assertEq(uint256(curVal), 0);                           //verify oracle has no current value
+        assertEq(uint256(curHas), 0);                           //verify oracle has no current value
 
-        //verify timestamp set
-        assertTrue(ethDaiLPOracle.zzz() > 0);
+        (nxtVal, nxtHas) = ethDaiLPOracle.nxt();                //get queued value
+        assertTrue(nxtVal > 0);                                 //verify oracle has non-zero queued value
+        assertEq(uint256(nxtHas), 1);                           //verify oracle has value
+
+        assertTrue(ethDaiLPOracle.zzz() > 0);                   //verify timestamp is non-zero
     }
 
     function testFail_double_poke() public {
         ethDaiLPOracle.poke();                                  //poke oracle
         ethDaiLPOracle.poke();                                  //poke oracle again w/o hop time elapsed
-        (uint128 curVal, uint128 curHas) = ethDaiLPOracle.cur();    //get current oracle value
-        assertEq(uint256(curHas), 1);                           //verify oracle has current value
-        assertTrue(uint256(curVal) > 0);                        //verify oracle has valid current value
     }
 
     function test_double_poke() public {
         ethDaiLPOracle.poke();                                  //poke oracle
-        //hevm.store(
-        //    address(ethDaiLPOracle),
-        //    bytes32(uint256(0x90)),
-        //    bytes32(uint256(sub(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop())))
-        //);
+        (uint128 nxtVal, uint128 nxtHas) = ethDaiLPOracle.nxt();    //get queued oracle value
+        assertEq(uint(nxtHas), 1);                              //verify oracle has queued value
         hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop())); //time travel into the future
         ethDaiLPOracle.poke();                                  //poke oracle again
-
+        (uint128 curVal, uint128 curHas) = ethDaiLPOracle.cur();    //get current oracle value
+        assertEq(uint(curHas), 1);                              //verify oracle has current value
+        assertEq(uint(curVal), uint(nxtVal));                   //verify queued value became current value
+        (nxtVal, nxtHas) = ethDaiLPOracle.nxt();                //get queued oracle value
+        assertEq(uint(nxtHas), 1);                              //verify oracle has queued value
+        assertTrue(nxtVal > 0);                                 //verify queued oracle value
     }
 
     function test_change() public {
@@ -333,7 +336,7 @@ contract UNIV2LPOracleTest is DSTest {
         ethDaiLPOracle.poke();                                  //poke oracle
         (bytes32 val, bool has) = ethDaiLPOracle.peep();        //peep oracle price without caller being whitelisted
         assertTrue(has);                                        //verify oracle has value
-        assertTrue(val != bytes32(0));                         //verify peep returned value
+        assertTrue(val != bytes32(0));                          //verify peep returned value
     }
 
     function test_whitelist_peep() public {
