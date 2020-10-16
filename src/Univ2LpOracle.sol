@@ -55,7 +55,7 @@
 // this ratio can then be used to calculate the normalized reserves
 // ultimately for pools where neither component is pegged to USD a single external Oracle would still be necessary
 
-pragma solidity ^0.5.12;
+pragma solidity ^0.6.7;
 
 interface ERC20Like {
     function decimals() external view returns (uint8);
@@ -75,45 +75,21 @@ interface OracleLike {
     function peek() external view returns (uint256,bool);
 }
 
-//Factory for creating UNIV2LPOracle instances
+//Factory for creating Uniswap V2 LP Token Oracle instances
 contract UNIV2LPOracleFactory {
 
-    // --- Auth ---
-    mapping (address => uint) public wards;                         //addresses with admin authority
-    function rely(address usr) external auth { wards[usr] = 1; }    //add admin
-    function deny(address usr) external auth { wards[usr] = 0; }    //remove admin
-    modifier auth {
-        require(wards[msg.sender] == 1, "UNIV2LPOracle/not-authorized");
-        _;
-    }
-
     mapping(address=>bool) public isOracle;
-    mapping(address=>mapping(address=>address)) public register;
 
-    event Created(address sender, address oracle, address token0, address token1, bytes32 name);
+    event Created(address sender, address orcl, bytes32 wat, address tok0, address tok1, address orb0, address orb1);
 
-    constructor () public {
-        wards[msg.sender] = 1;
-    }
-
-    function build(address UNIV2LP, bytes32 wat, address token0Oracle, address token1Oracle) public returns (address oracle) {
-        address token0 = UniswapV2PairLike(UNIV2LP).token0();
-        address token1 = UniswapV2PairLike(UNIV2LP).token1();
-        require(register[token0][token1] == address(0), "UNIV2LPOracleFactory/oracle-already-exists");
-        oracle = address(new UNIV2LPOracle(UNIV2LP, wat, token0Oracle, token1Oracle));
-        register[token0][token1] = oracle;
-        isOracle[oracle] = true;
-        UNIV2LPOracle(oracle).rely(msg.sender);
-        emit Created(msg.sender, oracle, token0, token1, wat);
-    }
-
-    function delist(address oracle) public auth {
-        require(isOracle[oracle], "UNIVPLPOracleFactory/not-an-oracle");
-        address src = UNIV2LPOracle(oracle).src();
-        address token0 = UniswapV2PairLike(src).token0();
-        address token1 = UniswapV2PairLike(src).token1();
-        isOracle[oracle] = false;
-        register[token0][token1] = address(0);
+    //Create new Uniswap V2 LP Token Oracle instance
+    function build(address _src, bytes32 _wat, address _orb0, address _orb1) public returns (address orcl) {
+        address tok0 = UniswapV2PairLike(_src).token0();
+        address tok1 = UniswapV2PairLike(_src).token1();
+        orcl = address(new UNIV2LPOracle(_src, _wat, _orb0, _orb1));
+        UNIV2LPOracle(orcl).rely(msg.sender);
+        isOracle[orcl] = true;
+        emit Created(msg.sender, orcl, _wat, tok0, tok1, _orb0, _orb1);
     }
 }
 
@@ -165,28 +141,28 @@ contract UNIV2LPOracle {
         }
     }
 
-    address    public  src;   //price source
-    uint32     public  zzz;   //time of last price update
-    bytes32    public  wat;   //token whose price is being tracked
+    address    public   src;    //price source
+    uint32     public   zzz;    //time of last price update
+    bytes32    public   wat;    //token whose price is being tracked
 
     uint16     constant ONE_HOUR = uint16(3600);
     uint16     public  hop = ONE_HOUR;  //minimum time inbetween price updates
 
-    uint8      public  token0Decimals = uint8(1);  //decimals of token0
-    uint8      public  token1Decimals = uint8(1);  //decimals of token1
+    uint8      public   dec0 = uint8(1);  //decimals of token0
+    uint8      public   dec1 = uint8(1);  //decimals of token1
 
      struct Feed {
-        uint128 val;    //price
-        uint128 has;    //is price valid
+        uint128         val;    //price
+        uint128         has;    //is price valid
     }
 
-    Feed    public  cur;   //curent price
-    Feed    public  nxt;   //queued price
+    Feed        public  cur;    //curent price
+    Feed        public  nxt;    //queued price
 
-    address public  token0Oracle;       //Oracle for token0, ideally a Medianizer
-    address public  token1Oracle;       //Oracle for token1, ideally a Medianizer
+    address     public  orb0;   //Oracle for token0, ideally a Medianizer
+    address     public  orb1;   //Oracle for token1, ideally a Medianizer
 
-    uint256 constant WAD = 10 ** 18;
+    uint256     constant WAD = 10 ** 18;
 
     // Whitelisted contracts, set by an auth
     mapping (address => uint256) public bud;
@@ -196,19 +172,25 @@ contract UNIV2LPOracle {
     event LogValue(uint128 curVal, uint128 nxtVal);
     event Debug(uint i, uint val);
 
-    constructor (address _src, bytes32 _wat, address _token0Oracle, address _token1Oracle) public {
+    constructor (address _src, bytes32 _wat, address _orb0, address _orb1) public {
+        require(_src != address(0), "UNIVPLPOracle/invalid-src-address");
+        require(_orb0 != address(0) && _orb1 != address(0), "UNIVPLPOracle/invalid-oracle-address");
         wards[msg.sender] = 1;
         src = _src;
         zzz = 0;
         wat = _wat;
-        token0Decimals = uint8(ERC20Like(UniswapV2PairLike(_src).token0()).decimals());     //get decimals of token0
-        token1Decimals = uint8(ERC20Like(UniswapV2PairLike(_src).token1()).decimals());     //get decimals of token1
-        token0Oracle = _token0Oracle;
-        token1Oracle = _token1Oracle;
+        dec0 = uint8(ERC20Like(UniswapV2PairLike(_src).token0()).decimals());     //get decimals of token0
+        dec1 = uint8(ERC20Like(UniswapV2PairLike(_src).token1()).decimals());     //get decimals of token1
+        orb0 = _orb0;
+        orb1 = _orb1;
     }
 
     function change(address _src) external auth {
         src = _src;
+    }
+
+    function step(uint16 _hop) external auth {
+        hop = _hop;
     }
 
     function stop() external auth {
@@ -222,65 +204,77 @@ contract UNIV2LPOracle {
         return block.timestamp >= add(zzz, hop);
     }
 
-    function seek() public returns (uint128 lpTokenPrice_, uint32 zzz_) {
-        UniswapV2PairLike(src).sync();
+    function seek() public returns (uint128 quote, uint32 ts) {
+        UniswapV2PairLike(src).sync();                      //sync up reserves of uniswap liquidity pool
 
-        (uint112 _reserve0, uint112 _reserve1, uint32 _blockTimestampLast) = UniswapV2PairLike(src).getReserves();  //pull reserves
-        require(_blockTimestampLast == block.timestamp);
-        emit Debug(0, _reserve0);
-        emit Debug(1, _reserve1);
+        (
+            uint112 res0,
+            uint112 res1,
+            uint32 ts
+        ) = UniswapV2PairLike(src).getReserves();           //pull reserves
+        require(ts == block.timestamp);
+        emit Debug(0, res0);
+        emit Debug(1, res1);
 
         // adjust reserves w/ respect to decimals 
-        if (token0Decimals != uint8(18)) {
-            _reserve0 = uint112(_reserve0 * 10 ** sub(18, token0Decimals));
+        if (dec0 != uint8(18)) {
+            res0 = uint112(res0 * 10 ** sub(18, dec0));
         }
-        if (token1Decimals != uint8(18)) {
-            _reserve1 = uint112(_reserve1 * 10 ** sub(18, token1Decimals));
+        if (dec1 != uint8(18)) {
+            res1 = uint112(res1 * 10 ** sub(18, dec1));
         }
         
-        emit Debug(10, _reserve0);
-        emit Debug(11, _reserve1);
+        emit Debug(10, res0);
+        emit Debug(11, res1);
 
-        uint k = mul(_reserve0, _reserve1);                 // Calculate constant product invariant k (WAD * WAD)
+        uint k = mul(res0, res1);                 // Calculate constant product invariant k (WAD * WAD)
         emit Debug(2, k);
 
         // All Oracle prices are priced with 18 decimals against USD
-        uint token0Price = OracleLike(token0Oracle).read(); // Query token0 price from oracle (WAD)
-        require(token0Price != 0, "UNIV2LPOracle/invalid-oracle-0-price");
-        emit Debug(3, token0Price);
-        uint token1Price = OracleLike(token1Oracle).read(); // Query token1 price from oracle (WAD)
-        require(token1Price != 0, "UNIV2LPOracle/invalid-oracle-1-price");
-        emit Debug(4, token1Price);
+        uint val0 = OracleLike(orb0).read(); // Query token0 price from oracle (WAD)
+        require(val0 != 0, "UNIV2LPOracle/invalid-oracle-0-price");
+        emit Debug(3, val0);
+        uint val1 = OracleLike(orb1).read(); // Query token1 price from oracle (WAD)
+        require(val1 != 0, "UNIV2LPOracle/invalid-oracle-1-price");
+        emit Debug(4, val1);
 
-        uint normReserve0 = sqrt(wmul(k, wdiv(token1Price, token0Price)));  // Get normalized token0 balance (WAD)
-        emit Debug(20, normReserve0);
-        uint normReserve1 = wdiv(k, normReserve0) / WAD;                    // Get normalized token1 balance; gas-savings
-        emit Debug(21, normReserve1);
+        uint bal0 = 
+            sqrt(
+                wmul(
+                    k,
+                    wdiv(
+                        val1,
+                        val0
+                    )
+                )
+            );  // Get normalized token0 balance (WAD)
+        emit Debug(20, bal0);
+        uint bal1 = wdiv(k, bal0) / WAD;                    // Get normalized token1 balance; gas-savings
+        emit Debug(21, bal1);
 
-        uint lpTokenSupply = ERC20Like(src).totalSupply();                  // Get LP token supply
-        require(lpTokenSupply != 0, "UNIVPLPOracle/invalid-lp-token-supply");
-        emit Debug(5, lpTokenSupply);
+        uint supply = ERC20Like(src).totalSupply();                  // Get LP token supply
+        require(supply != 0, "UNIVPLPOracle/invalid-lp-token-supply");
+        emit Debug(5, supply);
 
-        lpTokenPrice_ = uint128(
+        quote = uint128(
             wdiv(
                 add(
-                    wmul(normReserve0, token0Price), // (WAD)
-                    wmul(normReserve1, token1Price)  // (WAD)
+                    wmul(bal0, val0), // (WAD)
+                    wmul(bal1, val1)  // (WAD)
                 ), 
-                lpTokenSupply // (WAD)
+                supply // (WAD)
             )
         );
-        emit Debug(6, lpTokenPrice_);   
-        zzz_ = _blockTimestampLast; // Update timestamp
+        emit Debug(6, quote);
     }
 
     function poke() external stoppable {
         require(pass(), "UNIV2LPOracle/not-passed");
-        (uint _val, uint32 _zzz) = seek();
-        require(_val != 0, "UNIV2LPOracle/invalid-price");
+        (uint val, uint32 ts) = seek();
+        require(val != 0, "UNIV2LPOracle/invalid-price");
         cur = nxt;
-        nxt = Feed(uint128(_val), 1);
-        zzz = _zzz;
+        nxt = Feed(uint128(val), 1);
+        zzz = ts;
         emit LogValue(cur.val, nxt.val);
     }
 
