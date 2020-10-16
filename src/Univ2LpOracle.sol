@@ -207,37 +207,32 @@ contract UNIV2LPOracle {
     function seek() public returns (uint128 quote, uint32 ts) {
         UniswapV2PairLike(src).sync();                      //sync up reserves of uniswap liquidity pool
 
+        //get reserves of uniswap liquidity pool
         (
             uint112 res0,
             uint112 res1,
             uint32 ts
-        ) = UniswapV2PairLike(src).getReserves();           //pull reserves
+        ) = UniswapV2PairLike(src).getReserves();
         require(ts == block.timestamp);
-        emit Debug(0, res0);
-        emit Debug(1, res1);
 
-        // adjust reserves w/ respect to decimals 
+        //adjust reserves w/ respect to decimals 
         if (dec0 != uint8(18)) {
             res0 = uint112(res0 * 10 ** sub(18, dec0));
         }
         if (dec1 != uint8(18)) {
             res1 = uint112(res1 * 10 ** sub(18, dec1));
         }
-        
-        emit Debug(10, res0);
-        emit Debug(11, res1);
 
-        uint k = mul(res0, res1);                 // Calculate constant product invariant k (WAD * WAD)
-        emit Debug(2, k);
+        //calculate constant product invariant k (WAD * WAD)
+        uint k = mul(res0, res1);
 
-        // All Oracle prices are priced with 18 decimals against USD
+        //all Oracle prices are priced with 18 decimals against USD
         uint val0 = OracleLike(orb0).read(); // Query token0 price from oracle (WAD)
         require(val0 != 0, "UNIV2LPOracle/invalid-oracle-0-price");
-        emit Debug(3, val0);
         uint val1 = OracleLike(orb1).read(); // Query token1 price from oracle (WAD)
         require(val1 != 0, "UNIV2LPOracle/invalid-oracle-1-price");
-        emit Debug(4, val1);
 
+        //calculate normalized balances of token0 and token1
         uint bal0 = 
             sqrt(
                 wmul(
@@ -247,15 +242,14 @@ contract UNIV2LPOracle {
                         val0
                     )
                 )
-            );  // Get normalized token0 balance (WAD)
-        emit Debug(20, bal0);
-        uint bal1 = wdiv(k, bal0) / WAD;                    // Get normalized token1 balance; gas-savings
-        emit Debug(21, bal1);
+            );
+        uint bal1 = wdiv(k, bal0) / WAD;
 
-        uint supply = ERC20Like(src).totalSupply();                  // Get LP token supply
+        // Get LP token supply
+        uint supply = ERC20Like(src).totalSupply();
         require(supply != 0, "UNIVPLPOracle/invalid-lp-token-supply");
-        emit Debug(5, supply);
 
+        //calculate price quote of LP token
         quote = uint128(
             wdiv(
                 add(
@@ -265,7 +259,6 @@ contract UNIV2LPOracle {
                 supply // (WAD)
             )
         );
-        emit Debug(6, quote);
     }
 
     function poke() external stoppable {
