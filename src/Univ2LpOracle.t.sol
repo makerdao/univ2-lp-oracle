@@ -54,16 +54,17 @@ contract UNIV2LPOracleTest is DSTest {
     UNIV2LPOracle           ethDaiLPOracle;
     UNIV2LPOracle           ethUsdcLPOracle;
 
-    address constant        ETH_DAI_UNI_POOL = 0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11;
-    address constant        ETH_ORACLE       = 0x81FE72B5A8d1A857d176C3E7d5Bd2679A9B85763;
-    address constant        USDC_ORACLE      = 0x77b68899b99b686F415d074278a9a16b336085A0;
+    address constant        ETH_DAI_UNI_POOL  = 0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11;
+    address constant        ETH_ORACLE        = 0x81FE72B5A8d1A857d176C3E7d5Bd2679A9B85763;
+    address constant        USDC_ORACLE       = 0x77b68899b99b686F415d074278a9a16b336085A0;
     address constant        ETH_USDC_UNI_POOL = 0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc;
 
-    bytes32 constant        poolNameDAI = "ETH-DAI-UNIV2-LP";
-    bytes32 constant        poolNameUSDC = "ETH-USDC-UNIV2-LP";
+    bytes32 constant        poolNameDAI       = "ETH-DAI-UNIV2-LP";
+    bytes32 constant        poolNameUSDC      = "ETH-USDC-UNIV2-LP";
 
     function setUp() public {
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+        hevm.warp(now);
 
         factory = new UNIV2LPOracleFactory();
 
@@ -101,7 +102,7 @@ contract UNIV2LPOracleTest is DSTest {
             USDC_ORACLE,
             ETH_ORACLE)
         );                                                      //deploy new LP oracle
-        assertTrue(address(ethDaiLPOracle) != address(0));      //verify oracle deployed successfully 
+        assertTrue(address(ethDaiLPOracle) != address(0));      //verify oracle deployed successfully
         assertEq(oracle.wards(address(this)), 1);               //verify caller is owner
         assertEq(oracle.src(), ETH_DAI_UNI_POOL);               //verify uni pool is source
         assertEq(oracle.orb0(), USDC_ORACLE);                   //verify oracle configured correctly
@@ -206,7 +207,6 @@ contract UNIV2LPOracleTest is DSTest {
         if (ethUsdcLPOracle.dec1() != uint8(18)) {                                  //check if token1 has non-standard decimals
             res1 = uint112(res1 * 10 ** sub(18, ethUsdcLPOracle.dec1()));           //adjust reserve of token1
         }
-
         // -- BEGIN TEST 2 -- //
         assertEq(res1, ERC20Like(tok1).balanceOf(ETH_USDC_UNI_POOL));               //verify no adjustment for WETH (18 decimals)
         assertTrue(res0 > ERC20Like(tok0).balanceOf(ETH_USDC_UNI_POOL));            //verify reserve adjustment for  USDC (6 decimals)
@@ -238,9 +238,9 @@ contract UNIV2LPOracleTest is DSTest {
         //during times of high price volatility this condition may not hold
         assertTrue(bal0 > 0);                                   //verify normalized token0 balance is valid
         assertTrue(bal1 > 0);                                   //verify normalized token1 balance is valid
-        assertTrue(mul(uint(res0), 99) < mul(bal0, 100));       //verify normalized token0 balance is within 1% of token0 balance 
+        assertTrue(mul(uint(res0), 99) < mul(bal0, 100));       //verify normalized token0 balance is within 1% of token0 balance
         assertTrue(mul(bal0, 100) < mul(uint(res0), 101));      //verify normalized token0 balance is within 1% of token0 balance
-        assertTrue(mul(uint(res1), 99) < mul(bal1, 100));       //verify normalized token1 balance is within 1% of token1 balance 
+        assertTrue(mul(uint(res1), 99) < mul(bal1, 100));       //verify normalized token1 balance is within 1% of token1 balance
         assertTrue(mul(bal1, 100) < mul(uint(res1), 101));      //verify normalized token1 balance is within 1% of token1 balance
         //  -- END Test 5 --  //
 
