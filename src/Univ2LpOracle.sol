@@ -34,7 +34,7 @@
 // r_x = sqrt(k * p_y / p_x) & r_y = sqrt(k * p_x / p_y)
 //
 // now that we've calculated normalized values of r_x and r_y that are not prone to manipulation by an attacker,
-// we can calculate the price of an lp token using the following formula. 
+// we can calculate the price of an lp token using the following formula.
 //
 // p_lp = (r_x * p_x + r_y * p_y) / supply_lp
 //
@@ -60,7 +60,7 @@ pragma solidity ^0.6.7;
 interface ERC20Like {
     function decimals() external view returns (uint8);
     function balanceOf(address) external view returns (uint256);
-    function totalSupply() external view returns (uint256);   
+    function totalSupply() external view returns (uint256);
 }
 
 interface UniswapV2PairLike {    function sync() external;
@@ -146,12 +146,12 @@ contract UNIV2LPOracle {
     bytes32    public   wat;    //token whose price is being tracked
 
     uint16     constant ONE_HOUR = uint16(3600);
-    uint16     public  hop = ONE_HOUR;  //minimum time inbetween price updates
+    uint16     public   hop      = ONE_HOUR;  //minimum time inbetween price updates
 
-    uint8      public   dec0 = uint8(1);  //decimals of token0
-    uint8      public   dec1 = uint8(1);  //decimals of token1
+    uint8      public   dec0     = uint8(1);  //decimals of token0
+    uint8      public   dec1     = uint8(1);  //decimals of token1
 
-     struct Feed {
+    struct Feed {
         uint128         val;    //price
         uint128         has;    //is price valid
     }
@@ -176,9 +176,9 @@ contract UNIV2LPOracle {
         require(_src != address(0), "UNIVPLPOracle/invalid-src-address");
         require(_orb0 != address(0) && _orb1 != address(0), "UNIVPLPOracle/invalid-oracle-address");
         wards[msg.sender] = 1;
-        src = _src;
-        zzz = 0;
-        wat = _wat;
+        src  = _src;
+        zzz  = 0;
+        wat  = _wat;
         dec0 = uint8(ERC20Like(UniswapV2PairLike(_src).token0()).decimals());     //get decimals of token0
         dec1 = uint8(ERC20Like(UniswapV2PairLike(_src).token1()).decimals());     //get decimals of token1
         orb0 = _orb0;
@@ -215,7 +215,7 @@ contract UNIV2LPOracle {
         ) = UniswapV2PairLike(src).getReserves();
         require(ts == block.timestamp);
 
-        //adjust reserves w/ respect to decimals 
+        //adjust reserves w/ respect to decimals
         if (dec0 != uint8(18)) {
             res0 = uint112(res0 * 10 ** sub(18, dec0));
         }
@@ -233,7 +233,7 @@ contract UNIV2LPOracle {
         require(val1 != 0, "UNIV2LPOracle/invalid-oracle-1-price");
 
         //calculate normalized balances of token0 and token1
-        uint bal0 = 
+        uint bal0 =
             sqrt(
                 wmul(
                     k,
@@ -255,7 +255,7 @@ contract UNIV2LPOracle {
                 add(
                     wmul(bal0, val0), // (WAD)
                     wmul(bal1, val1)  // (WAD)
-                ), 
+                ),
                 supply // (WAD)
             )
         );
