@@ -205,14 +205,16 @@ contract UNIV2LPOracle {
     }
 
     function seek() public returns (uint128 quote, uint32 ts) {
-        UniswapV2PairLike(src).sync();                      //sync up reserves of uniswap liquidity pool
+        //sync up reserves of uniswap liquidity pool
+        UniswapV2PairLike(src).sync();
 
         //get reserves of uniswap liquidity pool
         (
             uint112 res0,
             uint112 res1,
-            uint32 ts
+            uint32  _ts
         ) = UniswapV2PairLike(src).getReserves();
+        ts = _ts;
         require(ts == block.timestamp);
 
         //adjust reserves w/ respect to decimals
