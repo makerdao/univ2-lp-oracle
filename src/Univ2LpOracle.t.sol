@@ -62,6 +62,9 @@ contract UNIV2LPOracleTest is DSTest {
     bytes32 constant        poolNameDAI       = "ETH-DAI-UNIV2-LP";
     bytes32 constant        poolNameUSDC      = "ETH-USDC-UNIV2-LP";
 
+    event Debug(uint256 idx, uint256 val);
+    event Debug(uint256 idx, address val);
+
     function setUp() public {
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
         hevm.warp(now);
