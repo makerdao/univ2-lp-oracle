@@ -213,7 +213,7 @@ contract UNIV2LPOracleTest is DSTest {
         // -- BEGIN TEST 2 -- //
         assertEq(res1, ERC20Like(tok1).balanceOf(ETH_USDC_UNI_POOL));               //verify no adjustment for WETH (18 decimals)
         assertTrue(res0 > ERC20Like(tok0).balanceOf(ETH_USDC_UNI_POOL));            //verify reserve adjustment for  USDC (6 decimals)
-        assertEq(res1 / 10 ** 12, ERC20Like(tok0).balanceOf(ETH_USDC_UNI_POOL));    //verify decimal adjustment behaves correctly
+        assertEq(res0 / 10 ** 12, ERC20Like(tok0).balanceOf(ETH_USDC_UNI_POOL));    //verify decimal adjustment behaves correctly
         //  -- END Test 2 --  //
 
         uint k = mul(res0, res1);                               //calculate constant product invariant k (WAD * WAD)
