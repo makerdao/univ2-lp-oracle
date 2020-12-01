@@ -243,14 +243,14 @@ contract UNIV2LPOracleTest is DSTest {
         uint bal1 = wdiv(k, bal0) / WAD;                                          // Calculate normalized token1 balance
 
         // -- BEGIN TEST 5 -- //
-        // Verify normalized reserves are within 1% margin of actual reserves
+        // Verify normalized reserves are within 1.3% margin of actual reserves
         // During times of high price volatility this condition may not hold
         assertTrue(bal0 > 0);                                                     // Verify normalized token0 balance is valid
         assertTrue(bal1 > 0);                                                     // Verify normalized token1 balance is valid
         uint diff0 = uint(res0) > bal0 ? uint(res0) - bal0 : bal0 - uint(res0);
         uint diff1 = uint(res1) > bal1 ? uint(res1) - bal1 : bal1 - uint(res1);
-        assertTrue(diff0 * RAY / bal0 < 13 * RAY / 1000);                         // Verify normalized token0 balance is within 1% of token0 balance
-        assertTrue(diff1 * RAY / bal1 < 13 * RAY / 1000);                         // Verify normalized token1 balance is within 1% of token0 balance
+        assertTrue(diff0 * RAY / bal0 < 13 * RAY / 1000);                         // Verify normalized token0 balance is within 1.3% of token0 balance
+        assertTrue(diff1 * RAY / bal1 < 13 * RAY / 1000);                         // Verify normalized token1 balance is within 1.3% of token0 balance
         //  -- END Test 5 --  //
 
         uint supply = ERC20Like(ETH_USDC_UNI_POOL).totalSupply();                 // Get LP token supply
