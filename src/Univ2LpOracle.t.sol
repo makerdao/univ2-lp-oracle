@@ -201,13 +201,13 @@ contract UNIV2LPOracleTest is DSTest {
         ) = UniswapV2PairLike(ETH_USDC_UNI_POOL).getReserves();                   // Get reserves of token0 and token1 in liquidity pool
         require(ts == block.timestamp);                                           // Verify timestamp is current block (due to sync)
 
-        // -- BEGIN TEST 1 -- //
+        /*** BEGIN TEST 1 ***/
         // Get token addresses of LP contract
         address tok0 = UniswapV2PairLike(ETH_USDC_UNI_POOL).token0();             // Get token0 of liquidity pool
         address tok1 = UniswapV2PairLike(ETH_USDC_UNI_POOL).token1();             // Get token1 of liquidity pool
         assertEq(res0, ERC20Like(tok0).balanceOf(ETH_USDC_UNI_POOL));             // Verify reserve of token0 matches balance of contract
         assertEq(res1, ERC20Like(tok1).balanceOf(ETH_USDC_UNI_POOL));             // Verify reserve of token1 matches balance of contract
-        //  -- END Test 1 --  //
+        /*** END TEST 1 ***/
 
         // Adjust reserves w/ respect to decimals
         if (ethUsdcLPOracle.dec0() != uint8(18)) {                                // Check if token0 has non-standard decimals
@@ -216,33 +216,33 @@ contract UNIV2LPOracleTest is DSTest {
         if (ethUsdcLPOracle.dec1() != uint8(18)) {                                // Check if token1 has non-standard decimals
             res1 = uint112(res1 * 10 ** sub(18, ethUsdcLPOracle.dec1()));         // Adjust reserve of token1
         }
-        // -- BEGIN TEST 2 -- //
+        /*** BEGIN TEST 2 ***/
         assertEq(res1, ERC20Like(tok1).balanceOf(ETH_USDC_UNI_POOL));             // Verify no adjustment for WETH (18 decimals)
         assertTrue(res0 > ERC20Like(tok0).balanceOf(ETH_USDC_UNI_POOL));          // Verify reserve adjustment for  USDC (6 decimals)
         assertEq(res0 / 10 ** 12, ERC20Like(tok0).balanceOf(ETH_USDC_UNI_POOL));  // Verify decimal adjustment behaves correctly
-        //  -- END Test 2 --  //
+        /*** END TEST 2 ***/
 
         uint k = mul(res0, res1);                                                 // Calculate constant product invariant k (WAD * WAD)
 
-        // -- BEGIN TEST 3 -- //
+        /*** BEGIN TEST 3 ***/
         assertTrue(k > res0);                                                     // Verify k is greater than reserve of token0
         assertTrue(k > res1);                                                     // Verify k is greater than reserve of token1
         assertEq(div(k, res0), res1);                                             // Verify k calculation behaves correctly
         assertEq(div(k, res1), res0);                                             // Verify k calculation behaves correctly
-        //  -- END Test 3 --  //
+        /*** END TEST 3 ***/
 
         uint val0 = OracleLike(ethUsdcLPOracle.orb0()).read();                    // Query token0 price from oracle (WAD)
         uint val1 = OracleLike(ethUsdcLPOracle.orb1()).read();                    // Query token1 price from oracle (WAD)
 
-        // -- BEGIN TEST 4 -- //
+        /*** BEGIN TEST 4 ***/
         assertEq(val0, 1000000000000000000);                                      // Verify token0 price is valid ($1.00 USDC)
         assertEq(val1, 606830000000000000000);                                    // Verify token1 price is valid ($606.83 ETH)
-        //  -- END Test 4 --  //
+        /*** END TEST 4 ***/
 
         uint bal0 = sqrt(wmul(k, wdiv(val1, val0)));                              // Calculate normalized token0 balance (WAD)
         uint bal1 = wdiv(k, bal0) / WAD;                                          // Calculate normalized token1 balance
 
-        // -- BEGIN TEST 5 -- //
+        /*** BEGIN TEST 5 ***/
         // Verify normalized reserves are within 1.3% margin of actual reserves
         // During times of high price volatility this condition may not hold
         assertTrue(bal0 > 0);                                                     // Verify normalized token0 balance is valid
@@ -251,13 +251,13 @@ contract UNIV2LPOracleTest is DSTest {
         uint diff1 = uint(res1) > bal1 ? uint(res1) - bal1 : bal1 - uint(res1);
         assertTrue(diff0 * RAY / bal0 < 13 * RAY / 1000);                         // Verify normalized token0 balance is within 1.3% of token0 balance
         assertTrue(diff1 * RAY / bal1 < 13 * RAY / 1000);                         // Verify normalized token1 balance is within 1.3% of token0 balance
-        //  -- END Test 5 --  //
+        /*** END TEST 5 ***/
 
         uint supply = ERC20Like(ETH_USDC_UNI_POOL).totalSupply();                 // Get LP token supply
 
-        // -- BEGIN TEST 6 -- //
+        /*** BEGIN TEST 6 ***/
         assertTrue(supply > 0);                                                   // Verify LP token supply is valid
-        //  -- END Test 6 --  //
+        /*** END TEST 6 ***/
 
         uint128 quote = uint128(                                                  // Calculate LP token price quote
             wdiv(
@@ -269,9 +269,9 @@ contract UNIV2LPOracleTest is DSTest {
             )
         );                                                      
 
-        // -- BEGIN TEST 7 -- //
+        /*** BEGIN TEST 7 ***/
         assertTrue(quote > 0);                                                    // Verify LP token price quote is valid
-        //  -- END Test 7 --  //
+        /*** END TEST 7 ***/
 
         ///////////////////////////////////////
         //                                   //
