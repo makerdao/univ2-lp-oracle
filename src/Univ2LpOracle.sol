@@ -173,7 +173,7 @@ contract UNIV2LPOracle {
 
     // --- Init ---
     constructor (address _src, bytes32 _wat, address _orb0, address _orb1) public {
-        require(_src != address(0),                         "UNIVPLPOracle/invalid-src-address");
+        require(_src  != address(0),                        "UNIVPLPOracle/invalid-src-address");
         require(_orb0 != address(0) && _orb1 != address(0), "UNIVPLPOracle/invalid-oracle-address");
         wards[msg.sender] = 1;
         src  = _src;
@@ -202,7 +202,7 @@ contract UNIV2LPOracle {
         return block.timestamp >= add(zzz, hop);
     }
 
-    function seek() public returns (uint128 quote, uint32 ts) { // Why do we pass in ts here?
+    function seek() public returns (uint128 quote, uint32 ts) {
         // Sync up reserves of uniswap liquidity pool
         UniswapV2PairLike(src).sync();
 
