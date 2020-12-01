@@ -179,8 +179,8 @@ contract UNIV2LPOracle {
         src  = _src;
         zzz  = 0;
         wat  = _wat;
-        dec0 = uint8(ERC20Like(UniswapV2PairLike(_src).token0()).decimals());     //get decimals of token0
-        dec1 = uint8(ERC20Like(UniswapV2PairLike(_src).token1()).decimals());     //get decimals of token1
+        dec0 = uint8(ERC20Like(UniswapV2PairLike(_src).token0()).decimals());  // Get decimals of token0
+        dec1 = uint8(ERC20Like(UniswapV2PairLike(_src).token1()).decimals());  // Get decimals of token1
         orb0 = _orb0;
         orb1 = _orb1;
     }
@@ -219,8 +219,8 @@ contract UNIV2LPOracle {
         uint256 k = mul(res0, res1);
 
         // All Oracle prices are priced with 18 decimals against USD
-        uint256 val0 = OracleLike(orb0).read(); // Query token0 price from oracle (WAD)
-        uint256 val1 = OracleLike(orb1).read(); // Query token1 price from oracle (WAD)
+        uint256 val0 = OracleLike(orb0).read();  // Query token0 price from oracle (WAD)
+        uint256 val1 = OracleLike(orb1).read();  // Query token1 price from oracle (WAD)
         require(val0 != 0, "UNIV2LPOracle/invalid-oracle-0-price");
         require(val1 != 0, "UNIV2LPOracle/invalid-oracle-1-price");
 
@@ -245,10 +245,10 @@ contract UNIV2LPOracle {
         quote = uint128(
             wdiv(
                 add(
-                    wmul(bal0, val0), // (WAD)
-                    wmul(bal1, val1)  // (WAD)
+                    wmul(bal0, val0),  // (WAD)
+                    wmul(bal1, val1)   // (WAD)
                 ),
-                supply // (WAD)
+                supply  // (WAD)
             )
         );
     }

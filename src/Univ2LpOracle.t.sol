@@ -190,8 +190,8 @@ contract UNIV2LPOracleTest is DSTest {
         //        Begin seek() excerpt       //
         //                                   //
         ///////////////////////////////////////
-        //This is necessary to test a bunch of the variables in memory
-        //slight modifications to seek()
+        // This is necessary to test a bunch of the variables in memory
+        // slight modifications to seek()
 
         UniswapV2PairLike(ETH_USDC_UNI_POOL).sync();
         (
@@ -370,7 +370,7 @@ contract UNIV2LPOracleTest is DSTest {
         hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop()));  // Time travel into the future
         ethDaiLPOracle.poke();                                       // Poke oracle again
         ethDaiLPOracle.kiss(address(this));                          // Whitelist caller
-        (bytes32 val, bool has) = ethDaiLPOracle.peek();             //peek oracle price without caller being whitelisted
+        (bytes32 val, bool has) = ethDaiLPOracle.peek();             // Peek oracle price without caller being whitelisted
         assertTrue(has);                                             // Verify oracle has value
         assertTrue(val != bytes32(0));                               // Verify peep returned valid value
     }
