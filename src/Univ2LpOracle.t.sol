@@ -6,6 +6,7 @@ import "./Univ2LpOracle.sol";
 
 interface Hevm {
     function warp(uint256) external;
+    function roll(uint256) external;
     function store(address,bytes32,bytes32) external;
 }
 
@@ -171,24 +172,29 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(ethDaiLPOracle.stopped(), 0);             // Verify contract active
     }
 
-    function check_dai_lp_price(uint256 blockRoll, uint256 lpPrice) public {
-        (uint128 oraclePrice, uint32 zzz) = ethDaiLPOracle.seek();  // Get new ETH-DAI LP price from uniswap
-        assertTrue(zzz > uint32(0));
+    function check_lp_price(UNIV2LPOracle oracle, uint256 blockRoll, uint256 lpPrice) public {
+        hevm.warp(blockRoll * 3600);
+        (uint128 oraclePrice, uint32 zzz) = oracle.seek();  // Get new ETH-DAI LP price from uniswap
+        // assertTrue(zzz > uint32(0));
         assertEq(uint256(oraclePrice), lpPrice);
     }
 
     function test_seek_dai() public {
-        check_dai_lp_price(0, 59277437412073031565);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
-    }
-
-    function check_wbtc_lp_price(uint256 blockRoll, uint256 lpPrice)  public {
-        (uint128 oraclePrice, uint32 zzz) = ethWbtcLPOracle.seek();      // Get new ETH-WBTC LP price from uniswap
-        assertTrue(zzz > uint32(0));
-        assertEq(uint256(oraclePrice), lpPrice);     
+        check_lp_price(ethDaiLPOracle, 0, 59277437412073031565);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
+        check_lp_price(ethDaiLPOracle, 1, 59277437412073031565);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
+        check_lp_price(ethDaiLPOracle, 2, 59277437412073031565);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
+        check_lp_price(ethDaiLPOracle, 3, 59277437412073031565);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
+        check_lp_price(ethDaiLPOracle, 4, 59277437412073031565);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
+        check_lp_price(ethDaiLPOracle, 5, 59277437412073031565);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
     }
 
     function test_seek_wbtc() public {
-        check_wbtc_lp_price(0, 749633854058924398263259222);  // $749,633,854.06, confirmed accurate on Zerion ETH-WBTC LP price feed
+        check_lp_price(ethWbtcLPOracle, 0, 749633854058924398263259222);  // $749,633,854.06, confirmed accurate on Zerion ETH-WBTC LP price feed
+        check_lp_price(ethWbtcLPOracle, 1, 749633854058924398263259222);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
+        check_lp_price(ethWbtcLPOracle, 2, 749633854058924398263259222);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
+        check_lp_price(ethWbtcLPOracle, 3, 749633854058924398263259222);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
+        check_lp_price(ethWbtcLPOracle, 4, 749633854058924398263259222);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
+        check_lp_price(ethWbtcLPOracle, 5, 749633854058924398263259222);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
     }
 
     function test_seek_internals() public {
