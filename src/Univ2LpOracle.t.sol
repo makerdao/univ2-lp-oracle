@@ -6,7 +6,6 @@ import "./Univ2LpOracle.sol";
 
 interface Hevm {
     function warp(uint256) external;
-    function roll(uint256) external;
     function store(address,bytes32,bytes32) external;
 }
 
@@ -70,7 +69,7 @@ contract UNIV2LPOracleTest is DSTest {
 
     function setUp() public {
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-        hevm.warp(1606840753);
+        hevm.warp(now);
 
         factory = new UNIV2LPOracleFactory();
 
@@ -162,39 +161,24 @@ contract UNIV2LPOracleTest is DSTest {
     //                                                   //
     ///////////////////////////////////////////////////////
 
-    uint256 TOLERANCE = 1 * RAY / 10000; // 0.01% price tolerance 
-
     function test_oracle_constructor() public {
         assertEq(ethDaiLPOracle.src(), ETH_DAI_UNI_POOL);  // Verify source is ETH-DAI pool
-        assertEq(ethDaiLPOracle.orb0(), WBTC_ORACLE);      // Verify token 0 oracle is WBTC oracle
+        assertEq(ethDaiLPOracle.orb0(), USDC_ORACLE);      // Verify token 0 oracle is USDC oracle
         assertEq(ethDaiLPOracle.orb1(), ETH_ORACLE);       // Verify token 1 oracle is ETH oracle
         assertEq(ethDaiLPOracle.wards(address(this)), 1);  // Verify owner
         assertEq(ethDaiLPOracle.stopped(), 0);             // Verify contract active
     }
 
-    function check_lp_price(UNIV2LPOracle oracle, uint256 blockRoll, uint256 lpPrice) public {
-        hevm.warp(blockRoll * 3600);
-        (uint128 oraclePrice, uint32 zzz) = oracle.seek();  // Get new ETH-DAI LP price from uniswap
-        // assertTrue(zzz > uint32(0));
-        assertEq(uint256(oraclePrice), lpPrice);
-    }
-
     function test_seek_dai() public {
-        check_lp_price(ethDaiLPOracle, 0, 59277437412073031565);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
-        check_lp_price(ethDaiLPOracle, 1, 59277437412073031565);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
-        check_lp_price(ethDaiLPOracle, 2, 59277437412073031565);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
-        check_lp_price(ethDaiLPOracle, 3, 59277437412073031565);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
-        check_lp_price(ethDaiLPOracle, 4, 59277437412073031565);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
-        check_lp_price(ethDaiLPOracle, 5, 59277437412073031565);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
+        (uint128 lpTokenPrice, uint32 zzz) = ethDaiLPOracle.seek();         //get new eth-dai lp price from uniswap
+        assertTrue(zzz > uint32(0));
+        assertTrue(uint256(lpTokenPrice) > WAD);
     }
 
     function test_seek_wbtc() public {
-        check_lp_price(ethWbtcLPOracle, 0, 749633854058924398263259222);  // $749,633,854.06, confirmed accurate on Zerion ETH-WBTC LP price feed
-        check_lp_price(ethWbtcLPOracle, 1, 749633854058924398263259222);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
-        check_lp_price(ethWbtcLPOracle, 2, 749633854058924398263259222);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
-        check_lp_price(ethWbtcLPOracle, 3, 749633854058924398263259222);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
-        check_lp_price(ethWbtcLPOracle, 4, 749633854058924398263259222);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
-        check_lp_price(ethWbtcLPOracle, 5, 749633854058924398263259222);  // $59.27, confirmed accurate on Zerion ETH-DAI LP price feed
+        (uint128 lpTokenPrice, uint32 zzz) = ethWbtcLPOracle.seek();         //get new eth-dai lp price from uniswap
+        assertTrue(zzz > uint32(0));
+        assertTrue(uint256(lpTokenPrice) > WAD);
     }
 
     function test_seek_internals() public {
@@ -259,8 +243,8 @@ contract UNIV2LPOracleTest is DSTest {
         uint val1 = OracleLike(ethWbtcLPOracle.orb1()).read();                    // Query token1 price from oracle (WAD)
 
         /*** BEGIN TEST 4 ***/
-        assertEq(val0, 19316428000000000000000);                                  // Verify token0 price is valid ($19,316.42 WBTC)
-        assertEq(val1, 606830000000000000000);                                    // Verify token1 price is valid ($606.83 ETH)
+        assertTrue(val0 > 0);                                                     // Verify token0 price is valid
+        assertTrue(val1 > 0);                                                     // Verify token1 price is valid
         /*** END TEST 4 ***/
 
         uint bal0 = sqrt(wmul(k, wdiv(val1, val0)));                              // Calculate normalized token0 balance (WAD)
@@ -273,14 +257,14 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(bal1 > 0);                                                     // Verify normalized token1 balance is valid
         uint diff0 = uint(res0) > bal0 ? uint(res0) - bal0 : bal0 - uint(res0);
         uint diff1 = uint(res1) > bal1 ? uint(res1) - bal1 : bal1 - uint(res1);
-        assertTrue(diff0 * RAY / bal0 < 13 * RAY / 1000);                         // Verify normalized token0 balance is within 1.3% of token0 balance
-        assertTrue(diff1 * RAY / bal1 < 13 * RAY / 1000);                         // Verify normalized token1 balance is within 1.3% of token0 balance
+        assertTrue(diff0 * RAY / bal0 < 1 * RAY / 100);                           // Verify normalized token0 balance is within 1.3% of token0 balance
+        assertTrue(diff1 * RAY / bal1 < 1 * RAY / 100);                           // Verify normalized token1 balance is within 1.3% of token0 balance
         /*** END TEST 5 ***/
 
         uint supply = ERC20Like(ETH_WBTC_UNI_POOL).totalSupply();                 // Get LP token supply
 
         /*** BEGIN TEST 6 ***/
-        assertTrue(supply > 0);                                                   // Verify LP token supply is valid
+        assertTrue(supply > WAD / 1000);                                          // Verify LP token supply is valid (supply can be less than WAD if price > mkt cap)
         /*** END TEST 6 ***/
 
         uint128 quote = uint128(                                                  // Calculate LP token price quote
@@ -294,7 +278,7 @@ contract UNIV2LPOracleTest is DSTest {
         );                                                      
 
         /*** BEGIN TEST 7 ***/
-        assertTrue(quote > 0);                                                    // Verify LP token price quote is valid
+        assertTrue(quote > WAD);                                                    // Verify LP token price quote is valid
         /*** END TEST 7 ***/
 
         ///////////////////////////////////////

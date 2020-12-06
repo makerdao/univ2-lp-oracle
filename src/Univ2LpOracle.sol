@@ -98,7 +98,7 @@ contract UNIV2LPOracle {
 	// --- Auth ---
     mapping (address => uint) public wards;                                       // Addresses with admin authority
     function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }  // Add admin
-    function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr);}   // Remove admin
+    function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }  // Remove admin
     modifier auth {
         require(wards[msg.sender] == 1, "UNIV2LPOracle/not-authorized");
         _;
@@ -169,6 +169,10 @@ contract UNIV2LPOracle {
     // --- Events ---
     event Rely(address indexed usr);
     event Deny(address indexed usr);
+    event Change(address indexed src);
+    event Step(uint16 hop);
+    event Stop();
+    event Start();
     event LogValue(uint128 curVal, uint128 nxtVal);
 
     // --- Init ---
@@ -187,15 +191,19 @@ contract UNIV2LPOracle {
 
     function change(address _src) external auth {
         src = _src;
+        emit Change(src);
     }
     function step(uint16 _hop) external auth {
         hop = _hop;
+        emit Step(hop);
     }
     function stop() external auth {
         stopped = 1;
+        emit Stop();
     }
     function start() external auth {
         stopped = 0;
+        emit Start();
     }
 
     function pass() public view returns (bool ok) {
