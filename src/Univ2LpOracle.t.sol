@@ -1,11 +1,14 @@
 pragma solidity ^0.6.7;
 
 import "ds-test/test.sol";
+import "./test/IUniswapV2Router02.sol";
+import "./test/IERC20.sol";
 
 import "./Univ2LpOracle.sol";
 
 interface Hevm {
     function warp(uint256) external;
+    function roll(uint256) external;
     function store(address,bytes32,bytes32) external;
 }
 
@@ -54,12 +57,17 @@ contract UNIV2LPOracleTest is DSTest {
     UNIV2LPOracleFactory factory;
     UNIV2LPOracle        ethDaiLPOracle;
     UNIV2LPOracle        ethWbtcLPOracle;
+    IUniswapV2Router02   uniswap;
 
     address constant ETH_DAI_UNI_POOL  = 0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11;
     address constant ETH_ORACLE        = 0x81FE72B5A8d1A857d176C3E7d5Bd2679A9B85763;
     address constant USDC_ORACLE       = 0x77b68899b99b686F415d074278a9a16b336085A0;
     address constant WBTC_ORACLE       = 0xf185d0682d50819263941e5f4EacC763CC5C6C42;
     address constant ETH_WBTC_UNI_POOL = 0xBb2b8038a1640196FbE3e38816F3e67Cba72D940;
+    address constant UNISWAP_ROUTER_02 = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address constant DAI               = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address constant WETH              = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address constant WBTC              = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
 
     bytes32 constant poolNameDAI       = "ETH-DAI-UNIV2-LP";
     bytes32 constant poolNameWBTC      = "ETH-WBTC-UNIV2-LP";
@@ -103,6 +111,15 @@ contract UNIV2LPOracleTest is DSTest {
             keccak256(abi.encode(address(ethWbtcLPOracle), uint256(5))),  // Whitelist oracle
             bytes32(uint256(1))
         );
+
+        uniswap = IUniswapV2Router02(UNISWAP_ROUTER_02);
+        // Add some Dai
+        hevm.store(
+            address(DAI),
+            keccak256(abi.encode(address(this), uint256(2))),
+            bytes32(uint(200_000_000 ether))
+        );
+        IERC20(DAI).approve(UNISWAP_ROUTER_02, uint(-1));
     }
 
     ///////////////////////////////////////////////////////
@@ -275,7 +292,7 @@ contract UNIV2LPOracleTest is DSTest {
                 ),
                 supply // (WAD)
             )
-        );                                                      
+        );
 
         /*** BEGIN TEST 7 ***/
         assertTrue(quote > WAD);                                                    // Verify LP token price quote is valid
@@ -424,5 +441,35 @@ contract UNIV2LPOracleTest is DSTest {
     function testFail_diss() public {
         ethDaiLPOracle.deny(address(this));  // Remove owner
         ethDaiLPOracle.diss(address(this));  // Attempt to remove caller from whitelist
+    }
+
+    function test_price_change() public {
+        ethDaiLPOracle.poke();                            // Poke oracle
+        ethDaiLPOracle.kiss(address(this));
+        (bytes32 val, bool has) = ethDaiLPOracle.peep();  // Peep oracle price without caller being whitelisted
+        uint256 firstVal = uint256(val);
+
+        assertTrue(firstVal < 100 ether && firstVal > 50 ether); // 58502000047042694225 at time of test
+        assertTrue(has);
+
+        assertEq(IERC20(DAI).balanceOf(address(this)), 200_000_000 ether);
+        address[] memory path = new address[](2);
+        path[0] = DAI;
+        path[1] = WETH;
+        uint[] memory amounts = uniswap.swapExactTokensForTokens(
+            IERC20(DAI).balanceOf(address(this)), 0, path, msg.sender, now);
+        assertEq(amounts.length, 2);
+        assertEq(amounts[0], 200_000_000 ether);
+        assertTrue(amounts[1] < 100_000 ether); // 79411165606915395083828 at time of test
+        hevm.warp(now + 3600);
+
+        ethDaiLPOracle.poke();
+        (val, has) = ethDaiLPOracle.peep();
+        uint256 secondVal = uint256(val);
+        assertTrue(secondVal < 100 ether && secondVal > 50 ether); // 58502000047042694225 at time of test
+        assertTrue(has);
+
+        // Ensure the price changed after the oracle update
+        assertTrue(firstVal != secondVal);
     }
 }
