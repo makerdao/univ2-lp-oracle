@@ -471,5 +471,7 @@ contract UNIV2LPOracleTest is DSTest {
 
         // Ensure the price changed after the oracle update
         assertTrue(firstVal != secondVal);
+        assertEq(firstVal, 1);
+        assertEq(secondVal, 2);
     }
 }

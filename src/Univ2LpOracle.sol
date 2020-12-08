@@ -210,6 +210,7 @@ contract UNIV2LPOracle {
         return block.timestamp >= add(zzz, hop);
     }
 
+    event Debug(uint, uint);
     function seek() public returns (uint128 quote, uint32 ts) {
         // Sync up reserves of uniswap liquidity pool
         UniswapV2PairLike(src).sync();
@@ -259,6 +260,15 @@ contract UNIV2LPOracle {
                 supply  // (WAD)
             )
         );
+        emit Debug(0, res0);
+        emit Debug(1, res1);
+        emit Debug(2, k);
+        emit Debug(3, val0);
+        emit Debug(4, val1);
+        emit Debug(5, bal0);
+        emit Debug(6, bal1);
+        emit Debug(7, supply);
+        emit Debug(8, quote);
     }
 
     function poke() external stoppable {
