@@ -152,7 +152,7 @@ contract UNIV2LPOracle {
     function wdiv(uint x, uint y) internal pure returns (uint z) {
         z = add(mul(x, WAD), y / 2) / y;
     }
-    // Compute square using babylonian method
+    // Compute the square root using the Babylonian method.
     function sqrt(uint y) internal pure returns (uint z) {
         if (y > 3) {
             z = y;
