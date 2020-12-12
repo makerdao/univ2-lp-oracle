@@ -99,8 +99,8 @@ contract UNIV2LPOracle {
     // --- Data ---
     uint8   public immutable dec0;  // Decimals of token0
     uint8   public immutable dec1;  // Decimals of token1
-    address public  orb0;           // Oracle for token0, ideally a Medianizer
-    address public  orb1;           // Oracle for token1, ideally a Medianizer
+    address public           orb0;  // Oracle for token0, ideally a Medianizer
+    address public           orb1;  // Oracle for token1, ideally a Medianizer
     bytes32 public immutable wat;   // Token whose price is being tracked
 
     uint32  public hop = 1 hours;   // Minimum time inbetween price updates
