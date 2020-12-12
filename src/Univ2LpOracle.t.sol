@@ -1,4 +1,5 @@
-pragma solidity ^0.6.7;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity ^0.6.11;
 
 import "ds-test/test.sol";
 
@@ -276,7 +277,7 @@ contract UNIV2LPOracleTest is DSTest {
                 ),
                 supply // (WAD)
             )
-        );                                                      
+        );
 
         /*** BEGIN TEST 7 ***/
         assertTrue(quote > WAD);                                                    // Verify LP token price quote is valid
