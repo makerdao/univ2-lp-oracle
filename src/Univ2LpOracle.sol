@@ -79,7 +79,7 @@ contract UNIV2LPOracleFactory {
 
 contract UNIV2LPOracle {
 
-	// --- Auth ---
+    // --- Auth ---
     mapping (address => uint) public wards;                                       // Addresses with admin authority
     function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }  // Add admin
     function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }  // Remove admin
@@ -161,8 +161,8 @@ contract UNIV2LPOracle {
 
     // --- Init ---
     constructor (address _src, bytes32 _wat, address _orb0, address _orb1) public {
-        require(_src  != address(0),                        "UNIVPLPOracle/invalid-src-address");
-        require(_orb0 != address(0) && _orb1 != address(0), "UNIVPLPOracle/invalid-oracle-address");
+        require(_src  != address(0),                        "UNIV2LPOracle/invalid-src-address");
+        require(_orb0 != address(0) && _orb1 != address(0), "UNIV2LPOracle/invalid-oracle-address");
         wards[msg.sender] = 1;
         src  = _src;
         zzz  = 0;
@@ -231,7 +231,7 @@ contract UNIV2LPOracle {
 
         // Get LP token supply
         uint256 supply = ERC20Like(src).totalSupply();
-        require(supply != 0, "UNIVPLPOracle/invalid-lp-token-supply");
+        require(supply != 0, "UNIV2LPOracle/invalid-lp-token-supply");
 
         // Calculate price quote of LP token
         quote = uint128(
