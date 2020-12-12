@@ -56,21 +56,21 @@ contract UNIV2LPOracleTest is DSTest {
     Hevm                 hevm;
     UNIV2LPOracleFactory factory;
     UNIV2LPOracle        daiEthLPOracle;
-    UNIV2LPOracle        ethWbtcLPOracle;
+    UNIV2LPOracle        wbtcEthLPOracle;
     IUniswapV2Router02   uniswap;
 
-    address constant ETH_DAI_UNI_POOL  = 0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11;
+    address constant DAI_ETH_UNI_POOL  = 0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11;
     address constant ETH_ORACLE        = 0x81FE72B5A8d1A857d176C3E7d5Bd2679A9B85763;
     address constant USDC_ORACLE       = 0x77b68899b99b686F415d074278a9a16b336085A0;
     address constant WBTC_ORACLE       = 0xf185d0682d50819263941e5f4EacC763CC5C6C42;
-    address constant ETH_WBTC_UNI_POOL = 0xBb2b8038a1640196FbE3e38816F3e67Cba72D940;
+    address constant WBTC_ETH_UNI_POOL = 0xBb2b8038a1640196FbE3e38816F3e67Cba72D940;
     address constant UNISWAP_ROUTER_02 = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address constant DAI               = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address constant WETH              = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address constant WBTC              = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
 
-    bytes32 constant poolNameDAI       = "ETH-DAI-UNIV2-LP";
-    bytes32 constant poolNameWBTC      = "ETH-WBTC-UNIV2-LP";
+    bytes32 constant poolNameDAI       = "DAI-ETH-UNIV2-LP";
+    bytes32 constant poolNameWBTC      = "WBTC-ETH-UNIV2-LP";
 
     uint256 ethMintAmt;
     uint256 wbtcMintAmt;
@@ -87,34 +87,34 @@ contract UNIV2LPOracleTest is DSTest {
         factory = new UNIV2LPOracleFactory();
 
         daiEthLPOracle = UNIV2LPOracle(factory.build(
-            ETH_DAI_UNI_POOL,
+            DAI_ETH_UNI_POOL,
             poolNameDAI,
             USDC_ORACLE,
             ETH_ORACLE)
         );
-        ethWbtcLPOracle = UNIV2LPOracle(factory.build(
-            ETH_WBTC_UNI_POOL,
+        wbtcEthLPOracle = UNIV2LPOracle(factory.build(
+            WBTC_ETH_UNI_POOL,
             poolNameWBTC,
             WBTC_ORACLE,
             ETH_ORACLE)
         );
 
-        // Whitelist ethDaiLP on ETH Oracle
+        // Whitelist daiEthLP on ETH Oracle
         hevm.store(
             address(ETH_ORACLE),
             keccak256(abi.encode(address(daiEthLPOracle), uint256(5))), // Whitelist oracle
             bytes32(uint256(1))
         );
-        // Whitelist ethWbtcLP on WBTC Oracle
+        // Whitelist wbtcEthLP on WBTC Oracle
         hevm.store(
             address(WBTC_ORACLE),
-            keccak256(abi.encode(address(ethWbtcLPOracle), uint256(5))), // Whitelist oracle
+            keccak256(abi.encode(address(wbtcEthLPOracle), uint256(5))), // Whitelist oracle
             bytes32(uint256(1))
         );
-        // Whitelist ethWbtcLP on ETH Oracle
+        // Whitelist wbtcEthLP on ETH Oracle
         hevm.store(
             address(ETH_ORACLE),
-            keccak256(abi.encode(address(ethWbtcLPOracle), uint256(5))),  // Whitelist oracle
+            keccak256(abi.encode(address(wbtcEthLPOracle), uint256(5))),  // Whitelist oracle
             bytes32(uint256(1))
         );
 
@@ -166,14 +166,14 @@ contract UNIV2LPOracleTest is DSTest {
 
     function test_build() public {
         UNIV2LPOracle oracle = UNIV2LPOracle(factory.build(
-            ETH_DAI_UNI_POOL,
+            DAI_ETH_UNI_POOL,
             poolNameDAI,
             WBTC_ORACLE,
             ETH_ORACLE)
         );                                                  // Deploy new LP oracle
         assertTrue(address(daiEthLPOracle) != address(0));  // Verify oracle deployed successfully
         assertEq(oracle.wards(address(this)), 1);           // Verify caller is owner
-        assertEq(oracle.src(), ETH_DAI_UNI_POOL);           // Verify uni pool is source
+        assertEq(oracle.src(), DAI_ETH_UNI_POOL);           // Verify uni pool is source
         assertEq(oracle.orb0(), WBTC_ORACLE);               // Verify oracle configured correctly
         assertEq(oracle.orb1(), ETH_ORACLE);                // Verify oracle configured correctly
         assertEq(oracle.stopped(), 0);                      // Verify contract is active
@@ -192,7 +192,7 @@ contract UNIV2LPOracleTest is DSTest {
     // Attempt to deploy new LP oracle
     function testFail_build_invalid_oracle() public {
         factory.build(
-            ETH_DAI_UNI_POOL,
+            DAI_ETH_UNI_POOL,
             poolNameDAI,
             WBTC_ORACLE,
             address(0)
@@ -201,7 +201,7 @@ contract UNIV2LPOracleTest is DSTest {
     // Attempt to deploy new LP oracle
     function testFail_build_invalid_oracle2() public {
         factory.build(
-            ETH_DAI_UNI_POOL,
+            DAI_ETH_UNI_POOL,
             poolNameDAI,
             address(0),
             ETH_ORACLE
@@ -215,7 +215,7 @@ contract UNIV2LPOracleTest is DSTest {
     ///////////////////////////////////////////////////////
 
     function test_oracle_constructor() public {
-        assertEq(daiEthLPOracle.src(), ETH_DAI_UNI_POOL);  // Verify source is ETH-DAI pool
+        assertEq(daiEthLPOracle.src(), DAI_ETH_UNI_POOL);  // Verify source is DAI-ETH pool
         assertEq(daiEthLPOracle.orb0(), USDC_ORACLE);      // Verify token 0 oracle is USDC oracle
         assertEq(daiEthLPOracle.orb1(), ETH_ORACLE);       // Verify token 1 oracle is ETH oracle
         assertEq(daiEthLPOracle.wards(address(this)), 1);  // Verify owner
@@ -223,13 +223,13 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_seek_dai() public {
-        (uint128 lpTokenPrice, uint32 zzz) = daiEthLPOracle.seek();         //get new eth-dai lp price from uniswap
+        (uint128 lpTokenPrice, uint32 zzz) = daiEthLPOracle.seek();         //get new dai-eth lp price from uniswap
         assertTrue(zzz > uint32(0));
         assertTrue(uint256(lpTokenPrice) > WAD);
     }
 
     function test_seek_wbtc() public {
-        (uint128 lpTokenPrice, uint32 zzz) = ethWbtcLPOracle.seek();         //get new eth-dai lp price from uniswap
+        (uint128 lpTokenPrice, uint32 zzz) = wbtcEthLPOracle.seek();         //get new wbtc-eth lp price from uniswap
         assertTrue(zzz > uint32(0));
         assertTrue(uint256(lpTokenPrice) > WAD);
     }
@@ -254,33 +254,33 @@ contract UNIV2LPOracleTest is DSTest {
         // This is necessary to test a bunch of the variables in memory
         // slight modifications to seek()
 
-        UniswapV2PairLike(ETH_WBTC_UNI_POOL).sync();
+        UniswapV2PairLike(WBTC_ETH_UNI_POOL).sync();
         (
             uint112 res0,
             uint112 res1,
             uint32 ts
-        ) = UniswapV2PairLike(ETH_WBTC_UNI_POOL).getReserves();                   // Get reserves of token0 and token1 in liquidity pool
+        ) = UniswapV2PairLike(WBTC_ETH_UNI_POOL).getReserves();                   // Get reserves of token0 and token1 in liquidity pool
         require(ts == block.timestamp);                                           // Verify timestamp is current block (due to sync)
 
         /*** BEGIN TEST 1 ***/
         // Get token addresses of LP contract
-        address tok0 = UniswapV2PairLike(ETH_WBTC_UNI_POOL).token0();             // Get token0 of liquidity pool
-        address tok1 = UniswapV2PairLike(ETH_WBTC_UNI_POOL).token1();             // Get token1 of liquidity pool
-        assertEq(res0, ERC20Like(tok0).balanceOf(ETH_WBTC_UNI_POOL));             // Verify reserve of token0 matches balance of contract
-        assertEq(res1, ERC20Like(tok1).balanceOf(ETH_WBTC_UNI_POOL));             // Verify reserve of token1 matches balance of contract
+        address tok0 = UniswapV2PairLike(WBTC_ETH_UNI_POOL).token0();             // Get token0 of liquidity pool
+        address tok1 = UniswapV2PairLike(WBTC_ETH_UNI_POOL).token1();             // Get token1 of liquidity pool
+        assertEq(res0, ERC20Like(tok0).balanceOf(WBTC_ETH_UNI_POOL));             // Verify reserve of token0 matches balance of contract
+        assertEq(res1, ERC20Like(tok1).balanceOf(WBTC_ETH_UNI_POOL));             // Verify reserve of token1 matches balance of contract
         /*** END TEST 1 ***/
 
         // Adjust reserves w/ respect to decimals
-        if (ethWbtcLPOracle.dec0() != uint8(18)) {                                // Check if token0 has non-standard decimals
-            res0 = uint112(res0 * 10 ** sub(18, ethWbtcLPOracle.dec0()));         // Adjust reserves of token0
+        if (wbtcEthLPOracle.dec0() != uint8(18)) {                                // Check if token0 has non-standard decimals
+            res0 = uint112(res0 * 10 ** sub(18, wbtcEthLPOracle.dec0()));         // Adjust reserves of token0
         }
-        if (ethWbtcLPOracle.dec1() != uint8(18)) {                                // Check if token1 has non-standard decimals
-            res1 = uint112(res1 * 10 ** sub(18, ethWbtcLPOracle.dec1()));         // Adjust reserve of token1
+        if (wbtcEthLPOracle.dec1() != uint8(18)) {                                // Check if token1 has non-standard decimals
+            res1 = uint112(res1 * 10 ** sub(18, wbtcEthLPOracle.dec1()));         // Adjust reserve of token1
         }
         /*** BEGIN TEST 2 ***/
-        assertEq(res1, ERC20Like(tok1).balanceOf(ETH_WBTC_UNI_POOL));             // Verify no adjustment for WETH (18 decimals)
-        assertTrue(res0 > ERC20Like(tok0).balanceOf(ETH_WBTC_UNI_POOL));          // Verify reserve adjustment for  WBTC (6 decimals)
-        assertEq(res0 / 10 ** 10, ERC20Like(tok0).balanceOf(ETH_WBTC_UNI_POOL));  // Verify decimal adjustment behaves correctly
+        assertEq(res1, ERC20Like(tok1).balanceOf(WBTC_ETH_UNI_POOL));             // Verify no adjustment for WETH (18 decimals)
+        assertTrue(res0 > ERC20Like(tok0).balanceOf(WBTC_ETH_UNI_POOL));          // Verify reserve adjustment for  WBTC (6 decimals)
+        assertEq(res0 / 10 ** 10, ERC20Like(tok0).balanceOf(WBTC_ETH_UNI_POOL));  // Verify decimal adjustment behaves correctly
         /*** END TEST 2 ***/
 
         uint k = mul(res0, res1);                                                 // Calculate constant product invariant k (WAD * WAD)
@@ -292,8 +292,8 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(div(k, res1), res0);                                             // Verify k calculation behaves correctly
         /*** END TEST 3 ***/
 
-        uint val0 = OracleLike(ethWbtcLPOracle.orb0()).read();                    // Query token0 price from oracle (WAD)
-        uint val1 = OracleLike(ethWbtcLPOracle.orb1()).read();                    // Query token1 price from oracle (WAD)
+        uint val0 = OracleLike(wbtcEthLPOracle.orb0()).read();                    // Query token0 price from oracle (WAD)
+        uint val1 = OracleLike(wbtcEthLPOracle.orb1()).read();                    // Query token1 price from oracle (WAD)
 
         /*** BEGIN TEST 4 ***/
         assertTrue(val0 > 0);                                                     // Verify token0 price is valid
@@ -314,7 +314,7 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(diff1 * RAY / bal1 < 1 * RAY / 100);                           // Verify normalized token1 balance is within 1.3% of token0 balance
         /*** END TEST 5 ***/
 
-        uint supply = ERC20Like(ETH_WBTC_UNI_POOL).totalSupply();                 // Get LP token supply
+        uint supply = ERC20Like(WBTC_ETH_UNI_POOL).totalSupply();                 // Get LP token supply
 
         /*** BEGIN TEST 6 ***/
         assertTrue(supply > WAD / 1000);                                          // Verify LP token supply is valid (supply can be less than WAD if price > mkt cap)
@@ -385,9 +385,9 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_change() public {
-        assertEq(daiEthLPOracle.src(), ETH_DAI_UNI_POOL);  // Verify source is ETH-DAI pool
-        daiEthLPOracle.change(ETH_WBTC_UNI_POOL);          // Change source to ETH-WBTC pool
-        assertEq(daiEthLPOracle.src(), ETH_WBTC_UNI_POOL); // Verify source is ETH-WBTC pool
+        assertEq(daiEthLPOracle.src(), DAI_ETH_UNI_POOL);  // Verify source is DAI-ETH pool
+        daiEthLPOracle.change(WBTC_ETH_UNI_POOL);          // Change source to WBTC-ETH pool
+        assertEq(daiEthLPOracle.src(), WBTC_ETH_UNI_POOL); // Verify source is WBTC-ETH pool
     }
 
     function test_pass() public {
