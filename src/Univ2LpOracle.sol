@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 /// UNIV2LPOracle.sol
 
 // Copyright (C) 2017-2020 Maker Ecosystem Growth Holdings, INC.
@@ -38,7 +40,6 @@
 //
 // p_lp = (r_x * p_x + r_y * p_y) / supply_lp
 //
-// SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.6.11;
 
 interface ERC20Like {
