@@ -38,8 +38,8 @@
 //
 // p_lp = (r_x * p_x + r_y * p_y) / supply_lp
 //
-
-pragma solidity ^0.6.7;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity ^0.6.11;
 
 interface ERC20Like {
     function decimals()         external view returns (uint8);
@@ -47,7 +47,7 @@ interface ERC20Like {
     function totalSupply()      external view returns (uint256);
 }
 
-interface UniswapV2PairLike {    
+interface UniswapV2PairLike {
     function sync()        external;
     function token0()      external view returns (address);
     function token1()      external view returns (address);
