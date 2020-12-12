@@ -52,7 +52,7 @@ contract UNIV2LPOracleTest is DSTest {
 
     Hevm                 hevm;
     UNIV2LPOracleFactory factory;
-    UNIV2LPOracle        ethDaiLPOracle;
+    UNIV2LPOracle        daiEthLPOracle;
     UNIV2LPOracle        ethWbtcLPOracle;
 
     address constant ETH_DAI_UNI_POOL  = 0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11;
@@ -73,7 +73,7 @@ contract UNIV2LPOracleTest is DSTest {
 
         factory = new UNIV2LPOracleFactory();
 
-        ethDaiLPOracle = UNIV2LPOracle(factory.build(
+        daiEthLPOracle = UNIV2LPOracle(factory.build(
             ETH_DAI_UNI_POOL,
             poolNameDAI,
             USDC_ORACLE,
@@ -89,15 +89,16 @@ contract UNIV2LPOracleTest is DSTest {
         // Whitelist ethDaiLP on ETH Oracle
         hevm.store(
             address(ETH_ORACLE),
-            keccak256(abi.encode(address(ethDaiLPOracle), uint256(5))), // Whitelist oracle
+            keccak256(abi.encode(address(daiEthLPOracle), uint256(5))), // Whitelist oracle
             bytes32(uint256(1))
         );
-        // Whitelist ethWbtcLP on ETH Oracle
+        // Whitelist ethWbtcLP on WBTC Oracle
         hevm.store(
             address(WBTC_ORACLE),
             keccak256(abi.encode(address(ethWbtcLPOracle), uint256(5))), // Whitelist oracle
             bytes32(uint256(1))
         );
+        // Whitelist ethWbtcLP on ETH Oracle
         hevm.store(
             address(ETH_ORACLE),
             keccak256(abi.encode(address(ethWbtcLPOracle), uint256(5))),  // Whitelist oracle
@@ -118,7 +119,7 @@ contract UNIV2LPOracleTest is DSTest {
             WBTC_ORACLE,
             ETH_ORACLE)
         );                                                  // Deploy new LP oracle
-        assertTrue(address(ethDaiLPOracle) != address(0));  // Verify oracle deployed successfully
+        assertTrue(address(daiEthLPOracle) != address(0));  // Verify oracle deployed successfully
         assertEq(oracle.wards(address(this)), 1);           // Verify caller is owner
         assertEq(oracle.src(), ETH_DAI_UNI_POOL);           // Verify uni pool is source
         assertEq(oracle.orb0(), WBTC_ORACLE);               // Verify oracle configured correctly
@@ -162,15 +163,15 @@ contract UNIV2LPOracleTest is DSTest {
     ///////////////////////////////////////////////////////
 
     function test_oracle_constructor() public {
-        assertEq(ethDaiLPOracle.src(), ETH_DAI_UNI_POOL);  // Verify source is ETH-DAI pool
-        assertEq(ethDaiLPOracle.orb0(), USDC_ORACLE);      // Verify token 0 oracle is USDC oracle
-        assertEq(ethDaiLPOracle.orb1(), ETH_ORACLE);       // Verify token 1 oracle is ETH oracle
-        assertEq(ethDaiLPOracle.wards(address(this)), 1);  // Verify owner
-        assertEq(ethDaiLPOracle.stopped(), 0);             // Verify contract active
+        assertEq(daiEthLPOracle.src(), ETH_DAI_UNI_POOL);  // Verify source is ETH-DAI pool
+        assertEq(daiEthLPOracle.orb0(), USDC_ORACLE);      // Verify token 0 oracle is USDC oracle
+        assertEq(daiEthLPOracle.orb1(), ETH_ORACLE);       // Verify token 1 oracle is ETH oracle
+        assertEq(daiEthLPOracle.wards(address(this)), 1);  // Verify owner
+        assertEq(daiEthLPOracle.stopped(), 0);             // Verify contract active
     }
 
     function test_seek_dai() public {
-        (uint128 lpTokenPrice, uint32 zzz) = ethDaiLPOracle.seek();         //get new eth-dai lp price from uniswap
+        (uint128 lpTokenPrice, uint32 zzz) = daiEthLPOracle.seek();         //get new eth-dai lp price from uniswap
         assertTrue(zzz > uint32(0));
         assertTrue(uint256(lpTokenPrice) > WAD);
     }
@@ -289,140 +290,160 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_poke() public {
-        (uint128 curVal, uint128 curHas) = ethDaiLPOracle.cur();  // Get current value
+        (uint128 curVal, uint128 curHas) = daiEthLPOracle.cur();  // Get current value
         assertEq(uint256(curVal), 0);                             // Verify oracle has no current value
         assertEq(uint256(curHas), 0);                             // Verify oracle has no current value
 
-        (uint128 nxtVal, uint128 nxtHas) = ethDaiLPOracle.nxt();  // Get queued value
+        (uint128 nxtVal, uint128 nxtHas) = daiEthLPOracle.nxt();  // Get queued value
         assertEq(uint256(nxtVal), 0);                             // Verify oracle has no queued price
         assertEq(uint256(nxtHas), 0);                             // Verify oracle has no queued price
 
-        assertEq(uint256(ethDaiLPOracle.zzz()), 0);               // Verify timestamp is 0
+        assertEq(uint256(daiEthLPOracle.zzz()), 0);               // Verify timestamp is 0
 
-        ethDaiLPOracle.poke();                                    // Update oracle
+        daiEthLPOracle.poke();                                    // Update oracle
 
-        (curVal, curHas) = ethDaiLPOracle.cur();                  // Get current value
+        (curVal, curHas) = daiEthLPOracle.cur();                  // Get current value
         assertEq(uint256(curVal), 0);                             // Verify oracle has no current value
         assertEq(uint256(curHas), 0);                             // Verify oracle has no current value
 
-        (nxtVal, nxtHas) = ethDaiLPOracle.nxt();                  // Get queued value
+        (nxtVal, nxtHas) = daiEthLPOracle.nxt();                  // Get queued value
         assertTrue(nxtVal > 0);                                   // Verify oracle has non-zero queued value
         assertEq(uint256(nxtHas), 1);                             // Verify oracle has value
 
-        assertTrue(ethDaiLPOracle.zzz() > 0);                     // Verify timestamp is non-zero
+        assertTrue(daiEthLPOracle.zzz() > 0);                     // Verify timestamp is non-zero
     }
 
     function testFail_double_poke() public {
-        ethDaiLPOracle.poke();  // Poke oracle
-        ethDaiLPOracle.poke();  // Poke oracle again w/o hop time elapsed
+        daiEthLPOracle.poke();  // Poke oracle
+        daiEthLPOracle.poke();  // Poke oracle again w/o hop time elapsed
     }
 
     function test_double_poke() public {
-        ethDaiLPOracle.poke();                                       // Poke oracle
-        (uint128 nxtVal, uint128 nxtHas) = ethDaiLPOracle.nxt();     // Get queued oracle value
+        daiEthLPOracle.poke();                                       // Poke oracle
+        (uint128 nxtVal, uint128 nxtHas) = daiEthLPOracle.nxt();     // Get queued oracle value
         assertEq(uint(nxtHas), 1);                                   // Verify oracle has queued value
-        hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop()));  // Time travel into the future
-        ethDaiLPOracle.poke();                                       // Poke oracle again
-        (uint128 curVal, uint128 curHas) = ethDaiLPOracle.cur();     // Get current oracle value
+        hevm.warp(add(daiEthLPOracle.zzz(), daiEthLPOracle.hop()));  // Time travel into the future
+        daiEthLPOracle.poke();                                       // Poke oracle again
+        (uint128 curVal, uint128 curHas) = daiEthLPOracle.cur();     // Get current oracle value
         assertEq(uint(curHas), 1);                                   // Verify oracle has current value
         assertEq(uint(curVal), uint(nxtVal));                        // Verify queued value became current value
-        (nxtVal, nxtHas) = ethDaiLPOracle.nxt();                     // Get queued oracle value
+        (nxtVal, nxtHas) = daiEthLPOracle.nxt();                     // Get queued oracle value
         assertEq(uint(nxtHas), 1);                                   // Verify oracle has queued value
         assertTrue(nxtVal > 0);                                      // Verify queued oracle value
     }
 
     function test_change() public {
-        assertEq(ethDaiLPOracle.src(), ETH_DAI_UNI_POOL);  // Verify source is ETH-DAI pool
-        ethDaiLPOracle.change(ETH_WBTC_UNI_POOL);          // Change source to ETH-WBTC pool
-        assertEq(ethDaiLPOracle.src(), ETH_WBTC_UNI_POOL); // Verify source is ETH-WBTC pool
+        assertEq(daiEthLPOracle.src(), ETH_DAI_UNI_POOL);  // Verify source is ETH-DAI pool
+        daiEthLPOracle.change(ETH_WBTC_UNI_POOL);          // Change source to ETH-WBTC pool
+        assertEq(daiEthLPOracle.src(), ETH_WBTC_UNI_POOL); // Verify source is ETH-WBTC pool
     }
 
     function test_pass() public {
-        assertTrue(ethDaiLPOracle.pass());                           // Verify time interval `hop`has elapsed
-        ethDaiLPOracle.poke();                                       // Poke oracle
-        hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop()));  // Time travel into the future
-        assertTrue(ethDaiLPOracle.pass());                           // Verify time interval `hop` has elapsed
+        assertTrue(daiEthLPOracle.pass());                           // Verify time interval `hop`has elapsed
+        daiEthLPOracle.poke();                                       // Poke oracle
+        hevm.warp(add(daiEthLPOracle.zzz(), daiEthLPOracle.hop()));  // Time travel into the future
+        assertTrue(daiEthLPOracle.pass());                           // Verify time interval `hop` has elapsed
     }
 
     function testFail_pass() public {
-        ethDaiLPOracle.poke();              // Poke oracle
-        assertTrue(ethDaiLPOracle.pass());  // Fail pass
+        daiEthLPOracle.poke();              // Poke oracle
+        assertTrue(daiEthLPOracle.pass());  // Fail pass
     }
 
     function testFail_whitelist_peep() public {
-        ethDaiLPOracle.poke();                            // Poke oracle
-        (bytes32 val, bool has) = ethDaiLPOracle.peep();  // Peep oracle price without caller being whitelisted
+        daiEthLPOracle.poke();                            // Poke oracle
+        (bytes32 val, bool has) = daiEthLPOracle.peep();  // Peep oracle price without caller being whitelisted
         assertTrue(has);                                  // Verify oracle has value
         assertTrue(val != bytes32(0));                    // Verify peep returned value
     }
 
     function test_whitelist_peep() public {
-        ethDaiLPOracle.poke();                            // Poke oracle
-        ethDaiLPOracle.kiss(address(this));               // White caller
-        (bytes32 val, bool has) = ethDaiLPOracle.peep();  // View queued oracle price
+        daiEthLPOracle.poke();                            // Poke oracle
+        daiEthLPOracle.kiss(address(this));               // White caller
+        (bytes32 val, bool has) = daiEthLPOracle.peep();  // View queued oracle price
         assertTrue(has);                                  // Verify oracle has value
         assertTrue(val != bytes32(0));                    // Verify peep returned valid value
     }
 
     function testFail_whitelist_peek() public {
-        ethDaiLPOracle.poke();                                       // Poke oracle
-        hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop()));  // Time travel into the future
-        ethDaiLPOracle.poke();                                       // Poke oracle again
-        (bytes32 val, bool has) = ethDaiLPOracle.peek();             // Peek oracle price without caller being whitelisted
+        daiEthLPOracle.poke();                                       // Poke oracle
+        hevm.warp(add(daiEthLPOracle.zzz(), daiEthLPOracle.hop()));  // Time travel into the future
+        daiEthLPOracle.poke();                                       // Poke oracle again
+        (bytes32 val, bool has) = daiEthLPOracle.peek();             // Peek oracle price without caller being whitelisted
         assertTrue(has);                                             // Verify oracle has value
         assertTrue(val > bytes32(0));                                // Verify peek returned value
     }
 
     function test_whitelist_peek() public {
-        ethDaiLPOracle.poke();                                       // Poke oracle
-        hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop()));  // Time travel into the future
-        ethDaiLPOracle.poke();                                       // Poke oracle again
-        ethDaiLPOracle.kiss(address(this));                          // Whitelist caller
-        (bytes32 val, bool has) = ethDaiLPOracle.peek();             // Peek oracle price without caller being whitelisted
+        daiEthLPOracle.poke();                                       // Poke oracle
+        hevm.warp(add(daiEthLPOracle.zzz(), daiEthLPOracle.hop()));  // Time travel into the future
+        daiEthLPOracle.poke();                                       // Poke oracle again
+        daiEthLPOracle.kiss(address(this));                          // Whitelist caller
+        (bytes32 val, bool has) = daiEthLPOracle.peek();             // Peek oracle price without caller being whitelisted
         assertTrue(has);                                             // Verify oracle has value
         assertTrue(val != bytes32(0));                               // Verify peep returned valid value
     }
 
     function test_whitelist_read() public {
-        ethDaiLPOracle.poke();                                       // Poke oracle
-        hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop()));  // Time travel into the future
-        ethDaiLPOracle.poke();                                       // Poke oracle again
-        ethDaiLPOracle.kiss(address(this));                          // Whitelist caller
-        bytes32 val = ethDaiLPOracle.read();                         // Read oracle price
+        daiEthLPOracle.poke();                                       // Poke oracle
+        hevm.warp(add(daiEthLPOracle.zzz(), daiEthLPOracle.hop()));  // Time travel into the future
+        daiEthLPOracle.poke();                                       // Poke oracle again
+        daiEthLPOracle.kiss(address(this));                          // Whitelist caller
+        bytes32 val = daiEthLPOracle.read();                         // Read oracle price
         assertTrue(val != bytes32(0));                               // Verify read returned valid value
     }
 
     function testFail_whitelist_read() public {
-        ethDaiLPOracle.poke();                                       // Poke oracle
-        hevm.warp(add(ethDaiLPOracle.zzz(), ethDaiLPOracle.hop()));  // Time travel into the future
-        ethDaiLPOracle.poke();                                       // Poke oracle again
-        ethDaiLPOracle.read();                                       // Attempt to read oracle value
+        daiEthLPOracle.poke();                                       // Poke oracle
+        hevm.warp(add(daiEthLPOracle.zzz(), daiEthLPOracle.hop()));  // Time travel into the future
+        daiEthLPOracle.poke();                                       // Poke oracle again
+        daiEthLPOracle.read();                                       // Attempt to read oracle value
     }
 
     function test_kiss_single() public {
-        assertTrue(ethDaiLPOracle.bud(address(this)) == 0);  // Verify caller is not whitelisted
-        ethDaiLPOracle.kiss(address(this));                  // Whitelist caller
-        assertTrue(ethDaiLPOracle.bud(address(this)) == 1);  // Verify caller is whitelisted
+        assertTrue(daiEthLPOracle.bud(address(this)) == 0);  // Verify caller is not whitelisted
+        daiEthLPOracle.kiss(address(this));                  // Whitelist caller
+        assertTrue(daiEthLPOracle.bud(address(this)) == 1);  // Verify caller is whitelisted
     }
 
     function testFail_kiss() public {
-        ethDaiLPOracle.deny(address(this));  // Remove owner
-        ethDaiLPOracle.kiss(address(this));  // Attempt to whitelist caller
+        daiEthLPOracle.deny(address(this));  // Remove owner
+        daiEthLPOracle.kiss(address(this));  // Attempt to whitelist caller
     }
 
     function testFail_kiss2() public {
-        ethDaiLPOracle.kiss(address(0));  // Attempt to whitelist 0 address
+        daiEthLPOracle.kiss(address(0));  // Attempt to whitelist 0 address
     }
 
     function test_diss_single() public {
-        ethDaiLPOracle.kiss(address(this));                  // Whitelist caller
-        assertTrue(ethDaiLPOracle.bud(address(this)) == 1);  // Verify caller is whitelisted
-        ethDaiLPOracle.diss(address(this));                  // Remove caller from whitelist
-        assertTrue(ethDaiLPOracle.bud(address(this)) == 0);  // Verify caller is not whitelisted
+        daiEthLPOracle.kiss(address(this));                  // Whitelist caller
+        assertTrue(daiEthLPOracle.bud(address(this)) == 1);  // Verify caller is whitelisted
+        daiEthLPOracle.diss(address(this));                  // Remove caller from whitelist
+        assertTrue(daiEthLPOracle.bud(address(this)) == 0);  // Verify caller is not whitelisted
     }
 
     function testFail_diss() public {
-        ethDaiLPOracle.deny(address(this));  // Remove owner
-        ethDaiLPOracle.diss(address(this));  // Attempt to remove caller from whitelist
+        daiEthLPOracle.deny(address(this));  // Remove owner
+        daiEthLPOracle.diss(address(this));  // Attempt to remove caller from whitelist
+    }
+
+    function test_link() public {
+        address TUSD_ORACLE = 0xeE13831ca96d191B688A670D47173694ba98f1e5;
+        daiEthLPOracle.link(0, TUSD_ORACLE);
+        assertEq(daiEthLPOracle.orb0(), TUSD_ORACLE);
+    }
+
+    function test_link_poke() public {
+        address TUSD_ORACLE = 0xeE13831ca96d191B688A670D47173694ba98f1e5;
+        daiEthLPOracle.poke();
+        daiEthLPOracle.kiss(address(this));
+        (bytes32 val1,) = daiEthLPOracle.peep();
+        daiEthLPOracle.link(0, TUSD_ORACLE);
+        (bytes32 val2,) = daiEthLPOracle.peep();
+        assertEq(val1, val2);
+    }
+
+    function testFail_link() public {
+        daiEthLPOracle.link(1, address(0));
     }
 }
