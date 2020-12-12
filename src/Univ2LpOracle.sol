@@ -154,7 +154,7 @@ contract UNIV2LPOracle {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event Change(address indexed src);
-    event Step(uint32 hop);
+    event Step(uint256 hop);
     event Stop();
     event Start();
     event LogValue(uint128 curVal, uint128 nxtVal);
@@ -177,8 +177,9 @@ contract UNIV2LPOracle {
         src = _src;
         emit Change(src);
     }
-    function step(uint32 _hop) external auth {
-        hop = _hop;
+    function step(uint256 _hop) external auth {
+        require(_hop <= uint32(-1), "UNIV2LPOracle/invalid-hop");
+        hop = uint32(_hop);
         emit Step(hop);
     }
     function stop() external auth {
