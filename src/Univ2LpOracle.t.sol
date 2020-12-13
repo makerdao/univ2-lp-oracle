@@ -58,7 +58,7 @@ contract UNIV2LPOracleTest is DSTest {
     UNIV2LPOracle        ethDaiLPOracle;
     UNIV2LPOracle        ethWbtcLPOracle;
     IUniswapV2Router02   uniswap;
-    
+
     address constant ETH_DAI_UNI_POOL  = 0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11;
     address constant ETH_ORACLE        = 0x81FE72B5A8d1A857d176C3E7d5Bd2679A9B85763;
     address constant USDC_ORACLE       = 0x77b68899b99b686F415d074278a9a16b336085A0;
@@ -130,7 +130,6 @@ contract UNIV2LPOracleTest is DSTest {
         );
         IERC20(DAI).approve(UNISWAP_ROUTER_02, uint(-1));
 
-        // Mint $10k of ETH 
         hevm.store(
             address(ETH_ORACLE),
             keccak256(abi.encode(address(this), uint256(5))), // Whitelist oracle
@@ -139,7 +138,6 @@ contract UNIV2LPOracleTest is DSTest {
         (bytes32 val, bool has) = OSMLike(ETH_ORACLE).peek();
         ethPrice = uint256(val);
 
-        // Mint $10k of WBTC 
         hevm.store(
             address(WBTC_ORACLE),
             keccak256(abi.encode(address(this), uint256(5))), // Whitelist oracle
@@ -148,6 +146,7 @@ contract UNIV2LPOracleTest is DSTest {
         (val, has) = OSMLike(WBTC_ORACLE).peek();
         wbtcPrice = uint256(val);
 
+        // Mint $10k of WBTC
         wbtcMintAmt = 10_000 ether * 1E8 / wbtcPrice;
         uint wbtcMintAmt2 = ((10_000 * ethPrice) / wbtcPrice) * 1E8;
         hevm.store(
@@ -482,7 +481,7 @@ contract UNIV2LPOracleTest is DSTest {
     function test_eth_dai_price_change() public {
         ethDaiLPOracle.poke();                            // Poke oracle
         ethDaiLPOracle.kiss(address(this));
-        (bytes32 val, bool has) = ethDaiLPOracle.peep();  // Peep oracle price without caller being whitelisted
+        (bytes32 val, bool has) = ethDaiLPOracle.peep();
         uint256 firstVal = uint256(val);
 
         assertTrue(firstVal < 100 ether && firstVal > 50 ether); // 57327394135985707908 at time of test
@@ -500,9 +499,10 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(IERC20(DAI).balanceOf(address(this)), 0);
         assertEq(IERC20(WETH).balanceOf(address(this)), amounts[1]);
 
-        uint256 diff = 
-            amounts[1] > 10_000 ether * WAD / ethPrice ? 
-            amounts[1] - 10_000 ether * WAD / ethPrice : 
+        // amounts[1] -> WETH
+        uint256 diff =
+            amounts[1] > 10_000 ether * WAD / ethPrice ?
+            amounts[1] - 10_000 ether * WAD / ethPrice :
             10_000 ether * WAD / ethPrice - amounts[1];
         assertTrue(diff * WAD / amounts[1] < 0.02 ether); // Less than 2% slippage
 
@@ -529,6 +529,7 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(IERC20(WETH).balanceOf(address(this)), 0);
         assertEq(IERC20(DAI).balanceOf(address(this)), amounts[1]);
 
+        // amounts[1] -> DAI
         diff = amounts[1] > 10_000 ether ? amounts[1] - 10_000 ether : 10_000 ether - amounts[1];
         assertTrue(diff * WAD / amounts[1] < 0.02 ether); // Less than 2% slippage
 
@@ -547,11 +548,11 @@ contract UNIV2LPOracleTest is DSTest {
     function test_eth_wbtc_price_change() public {
         ethWbtcLPOracle.poke();                            // Poke oracle
         ethWbtcLPOracle.kiss(address(this));
-        (bytes32 val, bool has) = ethWbtcLPOracle.peep();  // Peep oracle price without caller being whitelisted
+        (bytes32 val, bool has) = ethWbtcLPOracle.peep();
         uint256 firstVal = uint256(val);
 
         assertTrue(firstVal < 800_000_000 ether && firstVal > 600_000_000 ether); // 704030123759222892060867448 at time of test
-        assertTrue(has); 
+        assertTrue(has);
 
         /*** Trade $10k WBTC for ETH ***/
         assertEq(IERC20(WBTC).balanceOf(address(this)), wbtcMintAmt);
@@ -565,9 +566,9 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(IERC20(WBTC).balanceOf(address(this)), 0);
         assertEq(IERC20(WETH).balanceOf(address(this)), amounts[1]);
 
-        uint256 diff = 
-            amounts[1] > 10_000 ether * WAD / ethPrice ? 
-            amounts[1] - 10_000 ether * WAD / ethPrice : 
+        uint256 diff =
+            amounts[1] > 10_000 ether * WAD / ethPrice ?
+            amounts[1] - 10_000 ether * WAD / ethPrice :
             10_000 ether * WAD / ethPrice - amounts[1];
         assertTrue(diff * WAD / amounts[1] < 0.02 ether); // Less than 2% slippage
 
@@ -594,9 +595,9 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(IERC20(WETH).balanceOf(address(this)), 0);
         assertEq(IERC20(WBTC).balanceOf(address(this)), amounts[1]);
 
-        diff = 
-            amounts[1] > 10_000 ether * 1E8 / wbtcPrice ? 
-            amounts[1] - 10_000 ether * 1E8 / wbtcPrice : 
+        diff =
+            amounts[1] > 10_000 ether * 1E8 / wbtcPrice ?
+            amounts[1] - 10_000 ether * 1E8 / wbtcPrice :
             10_000 ether * 1E8 / wbtcPrice - amounts[1];
         assertTrue(diff * WAD / amounts[1] < 0.02 ether); // Less than 2% slippage
 
