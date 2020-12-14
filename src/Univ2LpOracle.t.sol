@@ -501,9 +501,9 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_eth_dai_price_change() public {
-        ethDaiLPOracle.poke();                            // Poke oracle
-        ethDaiLPOracle.kiss(address(this));
-        (bytes32 val, bool has) = ethDaiLPOracle.peep();
+        daiEthLPOracle.poke();                            // Poke oracle
+        daiEthLPOracle.kiss(address(this));
+        (bytes32 val, bool has) = daiEthLPOracle.peep();
         uint256 firstVal = uint256(val);
 
         assertTrue(firstVal < 100 ether && firstVal > 50 ether); // 57327394135985707908 at time of test
@@ -530,8 +530,8 @@ contract UNIV2LPOracleTest is DSTest {
 
         hevm.warp(now + 3600);
 
-        ethDaiLPOracle.poke();
-        (val, has) = ethDaiLPOracle.peep();
+        daiEthLPOracle.poke();
+        (val, has) = daiEthLPOracle.peep();
         uint256 secondVal = uint256(val);
         assertTrue(secondVal < 100 ether && secondVal > 50 ether); // 58502000047042694225 at time of test
         assertTrue(has);
@@ -557,8 +557,8 @@ contract UNIV2LPOracleTest is DSTest {
 
         hevm.warp(now + 3600);
 
-        ethDaiLPOracle.poke();
-        (val, has) = ethDaiLPOracle.peep();
+        daiEthLPOracle.poke();
+        (val, has) = daiEthLPOracle.peep();
         uint256 thirdVal = uint256(val);
         assertTrue(thirdVal < 100 ether && thirdVal > 50 ether); // 57327409193126552497 at time of test
         assertTrue(has);
@@ -568,9 +568,9 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_eth_wbtc_price_change() public {
-        ethWbtcLPOracle.poke();                            // Poke oracle
-        ethWbtcLPOracle.kiss(address(this));
-        (bytes32 val, bool has) = ethWbtcLPOracle.peep();
+        wbtcEthLPOracle.poke();                            // Poke oracle
+        wbtcEthLPOracle.kiss(address(this));
+        (bytes32 val, bool has) = wbtcEthLPOracle.peep();
         uint256 firstVal = uint256(val);
 
         assertTrue(firstVal < 800_000_000 ether && firstVal > 600_000_000 ether); // 704030123759222892060867448 at time of test
@@ -596,8 +596,8 @@ contract UNIV2LPOracleTest is DSTest {
 
         hevm.warp(now + 3600);
 
-        ethWbtcLPOracle.poke();
-        (val, has) = ethWbtcLPOracle.peep();
+        wbtcEthLPOracle.poke();
+        (val, has) = wbtcEthLPOracle.peep();
         uint256 secondVal = uint256(val);
         assertTrue(secondVal < 800_000_000 ether && secondVal > 600_000_000 ether); // 704030254653978027824526079 at time of test
         assertTrue(has);
@@ -625,8 +625,8 @@ contract UNIV2LPOracleTest is DSTest {
 
         hevm.warp(now + 3600);
 
-        ethWbtcLPOracle.poke();
-        (val, has) = ethWbtcLPOracle.peep();
+        wbtcEthLPOracle.poke();
+        (val, has) = wbtcEthLPOracle.peep();
         uint256 thirdVal = uint256(val);
         assertTrue(thirdVal < 800_000_000 ether && thirdVal > 600_000_000 ether); // 704030385156122678606782694 at time of test
         assertTrue(has);
