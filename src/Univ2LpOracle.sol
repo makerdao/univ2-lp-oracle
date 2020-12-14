@@ -177,8 +177,8 @@ contract UNIV2LPOracle {
 
     // --- Init ---
     constructor (address _src, bytes32 _wat, address _orb0, address _orb1) public {
-        require(_src  != address(0),                        "UNIVPLPOracle/invalid-src-address");
-        require(_orb0 != address(0) && _orb1 != address(0), "UNIVPLPOracle/invalid-oracle-address");
+        require(_src  != address(0),                        "UNIV2LPOracle/invalid-src-address");
+        require(_orb0 != address(0) && _orb1 != address(0), "UNIV2LPOracle/invalid-oracle-address");
         wards[msg.sender] = 1;
         src  = _src;
         zzz  = 0;
@@ -247,7 +247,7 @@ contract UNIV2LPOracle {
 
         // Get LP token supply
         uint256 supply = ERC20Like(src).totalSupply();
-        require(supply != 0, "UNIVPLPOracle/invalid-lp-token-supply");
+        require(supply != 0, "UNIV2LPOracle/invalid-lp-token-supply");
 
         // Calculate price quote of LP token
         quote = uint128(
