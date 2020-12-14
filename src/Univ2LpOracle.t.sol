@@ -1,6 +1,8 @@
 pragma solidity ^0.6.7;
 
 import "ds-test/test.sol";
+import "./test/IUniswapV2Router02.sol";
+import "./test/IERC20.sol";
 
 import "./Univ2LpOracle.sol";
 
@@ -11,6 +13,7 @@ interface Hevm {
 
 interface OSMLike {
     function bud(address) external returns (uint);
+    function peek() external returns (bytes32, bool);
 }
 
 contract UNIV2LPOracleTest is DSTest {
@@ -54,15 +57,25 @@ contract UNIV2LPOracleTest is DSTest {
     UNIV2LPOracleFactory factory;
     UNIV2LPOracle        ethDaiLPOracle;
     UNIV2LPOracle        ethWbtcLPOracle;
+    IUniswapV2Router02   uniswap;
 
     address constant ETH_DAI_UNI_POOL  = 0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11;
     address constant ETH_ORACLE        = 0x81FE72B5A8d1A857d176C3E7d5Bd2679A9B85763;
     address constant USDC_ORACLE       = 0x77b68899b99b686F415d074278a9a16b336085A0;
     address constant WBTC_ORACLE       = 0xf185d0682d50819263941e5f4EacC763CC5C6C42;
     address constant ETH_WBTC_UNI_POOL = 0xBb2b8038a1640196FbE3e38816F3e67Cba72D940;
+    address constant UNISWAP_ROUTER_02 = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address constant DAI               = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address constant WETH              = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address constant WBTC              = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
 
     bytes32 constant poolNameDAI       = "ETH-DAI-UNIV2-LP";
     bytes32 constant poolNameWBTC      = "ETH-WBTC-UNIV2-LP";
+
+    uint256 ethMintAmt;
+    uint256 wbtcMintAmt;
+    uint256 ethPrice;
+    uint256 wbtcPrice;
 
     event Debug(uint256 idx, uint256 val);
     event Debug(uint256 idx, address val);
@@ -103,6 +116,45 @@ contract UNIV2LPOracleTest is DSTest {
             keccak256(abi.encode(address(ethWbtcLPOracle), uint256(5))),  // Whitelist oracle
             bytes32(uint256(1))
         );
+
+        uniswap = IUniswapV2Router02(UNISWAP_ROUTER_02);
+
+        // Approve WETH for trading
+        IERC20(WETH).approve(UNISWAP_ROUTER_02, uint(-1));
+
+        // Mint $10k of DAI
+        hevm.store(
+            address(DAI),
+            keccak256(abi.encode(address(this), uint256(2))),
+            bytes32(uint(10_000 ether))
+        );
+        IERC20(DAI).approve(UNISWAP_ROUTER_02, uint(-1));
+
+        hevm.store(
+            address(ETH_ORACLE),
+            keccak256(abi.encode(address(this), uint256(5))), // Whitelist oracle
+            bytes32(uint256(1))
+        );
+        (bytes32 val, bool has) = OSMLike(ETH_ORACLE).peek();
+        ethPrice = uint256(val);
+
+        hevm.store(
+            address(WBTC_ORACLE),
+            keccak256(abi.encode(address(this), uint256(5))), // Whitelist oracle
+            bytes32(uint256(1))
+        );
+        (val, has) = OSMLike(WBTC_ORACLE).peek();
+        wbtcPrice = uint256(val);
+
+        // Mint $10k of WBTC
+        wbtcMintAmt = 10_000 ether * 1E8 / wbtcPrice;
+        uint wbtcMintAmt2 = ((10_000 * ethPrice) / wbtcPrice) * 1E8;
+        hevm.store(
+            address(WBTC),
+            keccak256(abi.encode(address(this), uint256(0))),
+            bytes32(wbtcMintAmt)
+        );
+        IERC20(WBTC).approve(UNISWAP_ROUTER_02, uint(-1));
     }
 
     ///////////////////////////////////////////////////////
@@ -275,7 +327,7 @@ contract UNIV2LPOracleTest is DSTest {
                 ),
                 supply // (WAD)
             )
-        );                                                      
+        );
 
         /*** BEGIN TEST 7 ***/
         assertTrue(quote > WAD);                                                    // Verify LP token price quote is valid
@@ -424,5 +476,140 @@ contract UNIV2LPOracleTest is DSTest {
     function testFail_diss() public {
         ethDaiLPOracle.deny(address(this));  // Remove owner
         ethDaiLPOracle.diss(address(this));  // Attempt to remove caller from whitelist
+    }
+
+    function test_eth_dai_price_change() public {
+        ethDaiLPOracle.poke();                            // Poke oracle
+        ethDaiLPOracle.kiss(address(this));
+        (bytes32 val, bool has) = ethDaiLPOracle.peep();
+        uint256 firstVal = uint256(val);
+
+        assertTrue(firstVal < 100 ether && firstVal > 50 ether); // 57327394135985707908 at time of test
+        assertTrue(has);
+
+        /*** Trade 10k DAI for ETH ***/
+        assertEq(IERC20(DAI).balanceOf(address(this)), 10_000 ether);
+        address[] memory path = new address[](2);
+        path[0] = DAI;
+        path[1] = WETH;
+        uint[] memory amounts = uniswap.swapExactTokensForTokens(
+            IERC20(DAI).balanceOf(address(this)), 0, path, address(this), now);
+        assertEq(amounts.length, 2);
+        assertEq(amounts[0], 10_000 ether);
+        assertEq(IERC20(DAI).balanceOf(address(this)), 0);
+        assertEq(IERC20(WETH).balanceOf(address(this)), amounts[1]);
+
+        // amounts[1] -> WETH
+        uint256 diff =
+            amounts[1] > 10_000 ether * WAD / ethPrice ?
+            amounts[1] - 10_000 ether * WAD / ethPrice :
+            10_000 ether * WAD / ethPrice - amounts[1];
+        assertTrue(diff * WAD / amounts[1] < 0.02 ether); // Less than 2% slippage
+
+        hevm.warp(now + 3600);
+
+        ethDaiLPOracle.poke();
+        (val, has) = ethDaiLPOracle.peep();
+        uint256 secondVal = uint256(val);
+        assertTrue(secondVal < 100 ether && secondVal > 50 ether); // 58502000047042694225 at time of test
+        assertTrue(has);
+
+        // Ensure the price changed after the oracle update
+        assertTrue(secondVal > firstVal);
+
+        /*** Trade $200m ETH for DAI ***/
+        uint256 ethBal = IERC20(WETH).balanceOf(address(this));
+        path = new address[](2);
+        path[0] = WETH;
+        path[1] = DAI;
+        amounts = uniswap.swapExactTokensForTokens(
+            IERC20(WETH).balanceOf(address(this)), 0, path, address(this), now);
+        assertEq(amounts.length, 2);
+        assertEq(amounts[0], ethBal);
+        assertEq(IERC20(WETH).balanceOf(address(this)), 0);
+        assertEq(IERC20(DAI).balanceOf(address(this)), amounts[1]);
+
+        // amounts[1] -> DAI
+        diff = amounts[1] > 10_000 ether ? amounts[1] - 10_000 ether : 10_000 ether - amounts[1];
+        assertTrue(diff * WAD / amounts[1] < 0.02 ether); // Less than 2% slippage
+
+        hevm.warp(now + 3600);
+
+        ethDaiLPOracle.poke();
+        (val, has) = ethDaiLPOracle.peep();
+        uint256 thirdVal = uint256(val);
+        assertTrue(thirdVal < 100 ether && thirdVal > 50 ether); // 57327409193126552497 at time of test
+        assertTrue(has);
+
+        // Ensure the price changed after the oracle update (k increases due to fees so price increases)
+        assertTrue(thirdVal > secondVal);
+    }
+
+    function test_eth_wbtc_price_change() public {
+        ethWbtcLPOracle.poke();                            // Poke oracle
+        ethWbtcLPOracle.kiss(address(this));
+        (bytes32 val, bool has) = ethWbtcLPOracle.peep();
+        uint256 firstVal = uint256(val);
+
+        assertTrue(firstVal < 800_000_000 ether && firstVal > 600_000_000 ether); // 704030123759222892060867448 at time of test
+        assertTrue(has);
+
+        /*** Trade $10k WBTC for ETH ***/
+        assertEq(IERC20(WBTC).balanceOf(address(this)), wbtcMintAmt);
+        address[] memory path = new address[](2);
+        path[0] = WBTC;
+        path[1] = WETH;
+        uint[] memory amounts = uniswap.swapExactTokensForTokens(
+            IERC20(WBTC).balanceOf(address(this)), 0, path, address(this), now);
+        assertEq(amounts.length, 2);
+        assertEq(amounts[0], wbtcMintAmt);
+        assertEq(IERC20(WBTC).balanceOf(address(this)), 0);
+        assertEq(IERC20(WETH).balanceOf(address(this)), amounts[1]);
+
+        uint256 diff =
+            amounts[1] > 10_000 ether * WAD / ethPrice ?
+            amounts[1] - 10_000 ether * WAD / ethPrice :
+            10_000 ether * WAD / ethPrice - amounts[1];
+        assertTrue(diff * WAD / amounts[1] < 0.02 ether); // Less than 2% slippage
+
+        hevm.warp(now + 3600);
+
+        ethWbtcLPOracle.poke();
+        (val, has) = ethWbtcLPOracle.peep();
+        uint256 secondVal = uint256(val);
+        assertTrue(secondVal < 800_000_000 ether && secondVal > 600_000_000 ether); // 704030254653978027824526079 at time of test
+        assertTrue(has);
+
+        // Ensure the price changed after the oracle update
+        assertTrue(secondVal > firstVal);
+
+        /*** Trade ETH for WBTC ***/
+        uint256 ethBal = IERC20(WETH).balanceOf(address(this));
+        path = new address[](2);
+        path[0] = WETH;
+        path[1] = WBTC;
+        amounts = uniswap.swapExactTokensForTokens(
+            IERC20(WETH).balanceOf(address(this)), 0, path, address(this), now);
+        assertEq(amounts.length, 2);
+        assertEq(amounts[0], ethBal);
+        assertEq(IERC20(WETH).balanceOf(address(this)), 0);
+        assertEq(IERC20(WBTC).balanceOf(address(this)), amounts[1]);
+
+        diff =
+            amounts[1] > 10_000 ether * 1E8 / wbtcPrice ?
+            amounts[1] - 10_000 ether * 1E8 / wbtcPrice :
+            10_000 ether * 1E8 / wbtcPrice - amounts[1];
+        assertTrue(diff * WAD / amounts[1] < 0.02 ether); // Less than 2% slippage
+
+        hevm.warp(now + 3600);
+
+        ethWbtcLPOracle.poke();
+        (val, has) = ethWbtcLPOracle.peep();
+        uint256 thirdVal = uint256(val);
+        assertTrue(thirdVal < 800_000_000 ether && thirdVal > 600_000_000 ether); // 704030385156122678606782694 at time of test
+        assertTrue(has);
+
+        // Ensure the price changed after the oracle update (k increases due to fees so price increases)
+        assertTrue(thirdVal > secondVal);
     }
 }
