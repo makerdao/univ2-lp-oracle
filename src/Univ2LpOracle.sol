@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 /// UNIV2LPOracle.sol
 
 // Copyright (C) 2017-2020 Maker Ecosystem Growth Holdings, INC.
@@ -21,7 +23,7 @@
 //                                                   //
 ///////////////////////////////////////////////////////
 
-// INVARIANT k = reserve0 [num token0] * reserve1 [num token1] (Need to take into account decimals of LP component tokens)
+// INVARIANT k = reserve0 [num token0] * reserve1 [num token1]
 //
 // k = r_x * r_y
 // r_y = k / r_x
@@ -38,24 +40,7 @@
 //
 // p_lp = (r_x * p_x + r_y * p_y) / supply_lp
 //
-// [OPTIONAL] Maker Oracles vs Uniswap Oracles
-// Note the Uniswap Oracle price is the TWAP over the interval t2 - t1 (in our case 1 hour)
-// This means when the price volatility > 2% the calculated price could be quite inaccurate.
-// It is better to use the MakerDAO Medianizer price as it updates on a 0.5%/1% spread
-// It's "safe" to use the Medianizer value because the `cur` price undergoes the OSM delay `hop`
-// Nonetheless for completeness below is a manner of utilizing the Uniswap Oracle.
-//
-// Whats cool about the equation r_x = sqrt(k * p_y / p_x)  & r_y = sqrt(k * p_x / p_y)
-// is that we can get the price ratio of p_y / p_x and p_x / p_y through priceCumulativeList
-// (this is essentially Uniswap's Oracle)
-// price0CumulativeLast is the price of token x denominated in token y
-// price1CumulativeLast is the price of token y denominated in token x
-// to convert price#CumulativeLast into a usable number we need to take 2 reference points at different times.
-// p_x / p_y = (priceXCumulativeLatest_2 - priceXCumulativeLatest_1) / (t2 - t1)
-// This ratio can then be used to calculate the normalized reserves.
-// Ultimately for pools where neither component is pegged to USD a single external Oracle would still be necessary.
-
-pragma solidity ^0.6.7;
+pragma solidity ^0.6.11;
 
 interface ERC20Like {
     function decimals()         external view returns (uint8);
@@ -63,7 +48,7 @@ interface ERC20Like {
     function totalSupply()      external view returns (uint256);
 }
 
-interface UniswapV2PairLike {    
+interface UniswapV2PairLike {
     function sync()        external;
     function token0()      external view returns (address);
     function token1()      external view returns (address);
@@ -95,7 +80,7 @@ contract UNIV2LPOracleFactory {
 
 contract UNIV2LPOracle {
 
-	// --- Auth ---
+    // --- Auth ---
     mapping (address => uint) public wards;                                       // Addresses with admin authority
     function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }  // Add admin
     function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }  // Remove admin
@@ -115,19 +100,19 @@ contract UNIV2LPOracle {
     // --- Data ---
     uint8   public immutable dec0;  // Decimals of token0
     uint8   public immutable dec1;  // Decimals of token1
-    address public immutable orb0;  // Oracle for  token0, ideally a Medianizer
-    address public immutable orb1;  // Oracle for  token1, ideally a Medianizer
+    address public           orb0;  // Oracle for token0, ideally a Medianizer
+    address public           orb1;  // Oracle for token1, ideally a Medianizer
     bytes32 public immutable wat;   // Token whose price is being tracked
 
-    uint16 public hop = 1 hours;  // Minimum time inbetween price updates
+    uint32  public hop = 1 hours;   // Minimum time inbetween price updates
+    address public src;             // Price source
+    uint32  public zzz;             // Time of last price update
 
     struct Feed {
         uint128 val;  // Price
         uint128 has;  // Is price valid
     }
 
-    address public src;  // Price source
-    uint32  public zzz;  // Time of last price update
     Feed    public cur;  // Current price
     Feed    public nxt;  // Queued price
 
@@ -170,7 +155,7 @@ contract UNIV2LPOracle {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event Change(address indexed src);
-    event Step(uint16 hop);
+    event Step(uint256 hop);
     event Stop();
     event Start();
     event LogValue(uint128 curVal, uint128 nxtVal);
@@ -193,8 +178,9 @@ contract UNIV2LPOracle {
         src = _src;
         emit Change(src);
     }
-    function step(uint16 _hop) external auth {
-        hop = _hop;
+    function step(uint256 _hop) external auth {
+        require(_hop <= uint32(-1), "UNIV2LPOracle/invalid-hop");
+        hop = uint32(_hop);
         emit Step(hop);
     }
     function stop() external auth {
@@ -289,10 +275,6 @@ contract UNIV2LPOracle {
         bud[a] = 1;
     }
 
-    function diss(address a) external auth {
-        bud[a] = 0;
-    }
-
     function kiss(address[] calldata a) external auth {
         for(uint i = 0; i < a.length; i++) {
             require(a[i] != address(0), "UNIV2LPOracle/no-contract-0");
@@ -300,9 +282,22 @@ contract UNIV2LPOracle {
         }
     }
 
+    function diss(address a) external auth {
+        bud[a] = 0;
+    }
+
     function diss(address[] calldata a) external auth {
         for(uint i = 0; i < a.length; i++) {
             bud[a[i]] = 0;
+        }
+    }
+
+    function link(uint256 id, address orb) external auth {
+        require(orb != address(0), "UNIV2LPOracle/no-contract-0");
+        if(id == 0) {
+            orb0 = orb;
+        } else if (id == 1) {
+            orb1 = orb;
         }
     }
 }
