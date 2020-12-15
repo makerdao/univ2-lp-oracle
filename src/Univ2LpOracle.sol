@@ -158,7 +158,7 @@ contract UNIV2LPOracle {
     event Step(uint256 hop);
     event Stop();
     event Start();
-    event LogValue(uint128 curVal, uint128 nxtVal);
+    event Value(uint128 curVal, uint128 nxtVal);
     event Link(uint256 id, address orb);
 
     // --- Init ---
@@ -175,22 +175,35 @@ contract UNIV2LPOracle {
         orb1 = _orb1;
     }
 
+    function stop() external auth {
+        stopped = 1;
+        emit Stop();
+    }
+
+    function start() external auth {
+        stopped = 0;
+        emit Start();
+    }
+
     function change(address _src) external auth {
         src = _src;
         emit Change(src);
     }
+
     function step(uint256 _hop) external auth {
         require(_hop <= uint32(-1), "UNIV2LPOracle/invalid-hop");
         hop = uint32(_hop);
         emit Step(hop);
     }
-    function stop() external auth {
-        stopped = 1;
-        emit Stop();
-    }
-    function start() external auth {
-        stopped = 0;
-        emit Start();
+
+    function link(uint256 id, address orb) external auth {
+        require(orb != address(0), "UNIV2LPOracle/no-contract-0");
+        if(id == 0) {
+            orb0 = orb;
+        } else if (id == 1) {
+            orb1 = orb;
+        }
+        emit Link(id, orb);
     }
 
     function pass() public view returns (bool ok) {
@@ -255,7 +268,7 @@ contract UNIV2LPOracle {
         cur = nxt;
         nxt = Feed(uint128(val), 1);
         zzz = ts;
-        emit LogValue(cur.val, nxt.val);
+        emit Value(cur.val, nxt.val);
     }
 
     function peek() external view toll returns (bytes32,bool) {
@@ -291,15 +304,5 @@ contract UNIV2LPOracle {
         for(uint i = 0; i < a.length; i++) {
             bud[a[i]] = 0;
         }
-    }
-
-    function link(uint256 id, address orb) external auth {
-        require(orb != address(0), "UNIV2LPOracle/no-contract-0");
-        if(id == 0) {
-            orb0 = orb;
-        } else if (id == 1) {
-            orb1 = orb;
-        }
-        emit Link(id, orb);
     }
 }
