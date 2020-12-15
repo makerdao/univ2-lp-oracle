@@ -159,6 +159,7 @@ contract UNIV2LPOracle {
     event Stop();
     event Start();
     event LogValue(uint128 curVal, uint128 nxtVal);
+    event Link(uint256 id, address orb);
 
     // --- Init ---
     constructor (address _src, bytes32 _wat, address _orb0, address _orb1) public {
@@ -299,5 +300,6 @@ contract UNIV2LPOracle {
         } else if (id == 1) {
             orb1 = orb;
         }
+        emit Link(id, orb);
     }
 }
