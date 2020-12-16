@@ -49,10 +49,11 @@ interface ERC20Like {
 }
 
 interface UniswapV2PairLike {
-    function sync()        external;
-    function token0()      external view returns (address);
-    function token1()      external view returns (address);
-    function getReserves() external view returns (uint112,uint112,uint32);  // reserve0, reserve1, blockTimestampLast
+    function sync()         external;
+    function token0()       external view returns (address);
+    function token1()       external view returns (address);
+    function kLast()        external view returns (uint256);
+    function getReserves()  external view returns (uint112,uint112,uint32);  // reserve0, reserve1, blockTimestampLast
 }
 
 interface OracleLike {
@@ -229,8 +230,8 @@ contract UNIV2LPOracle {
 
         // All Oracle prices are priced with 18 decimals against USD
         uint256 val0 = OracleLike(orb0).read();  // Query token0 price from oracle (WAD)
-        uint256 val1 = OracleLike(orb1).read();  // Query token1 price from oracle (WAD)
         require(val0 != 0, "UNIV2LPOracle/invalid-oracle-0-price");
+        uint256 val1 = OracleLike(orb1).read();  // Query token1 price from oracle (WAD)
         require(val1 != 0, "UNIV2LPOracle/invalid-oracle-1-price");
 
         // Calculate normalized balances of token0 and token1
@@ -249,6 +250,25 @@ contract UNIV2LPOracle {
         // Get LP token supply
         uint256 supply = ERC20Like(src).totalSupply();
         require(supply > 0, "UNIV2LPOracle/invalid-lp-token-supply");
+
+        // Adjust LP token supply if fees are on
+        // We sacrifice some correctness for gas-savings by not querying param `feeTo`
+        // from the factory. This is only an issue during the time interval that Uniswap
+        // LP fees are toggled on/off and liquidity in the pair is added/removed.
+        // Uniswap Governance toggling fees is assumed to be a rare event, with liquidity
+        // for popular pairs constantly in flux. In the worst case the LP price would be off
+        // by ~0.05% which is insigificant relative to drift caused by the `hop` delay.
+        uint256 kLast = UniswapV2PairLike(src).kLast();
+        if (kLast > 0) {
+            uint256 rootK = sqrt(k);
+            uint256 rootKLast = sqrt(kLast);
+            if (rootK > rootKLast) {
+                uint256 numerator = wmul(supply, sub(rootK, rootKLast));
+                uint256 denominator = add(wmul(rootK, 5), rootKLast);
+                supply = add(supply, wdiv(numerator, denominator));
+            }
+        }
+
 
         // Calculate price quote of LP token
         quote = uint128(
