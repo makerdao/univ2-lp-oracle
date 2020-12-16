@@ -125,7 +125,7 @@ contract UNIV2LPOracleTest is DSTest {
             address(ETH_ORACLE),
             keccak256(abi.encode(address(seekableOracleWBTC), uint256(5))),
             bytes32(uint256(1))
-        );                                                                        // Whitelist DAI-ETH LP Oracle on ETH Oracle
+        );                                                                        // Whitelist DAI-ETH LP Oracle on seekable ETH Oracle
         hevm.store(
             address(WBTC_ORACLE),
             keccak256(abi.encode(address(seekableOracleWBTC), uint256(5))),
@@ -250,13 +250,13 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_seek_dai() public {
-        (uint128 lpTokenPrice, uint32 zzz) = seekableOracleDAI.extseek();               // Get new dai-eth lp price from uniswap
+        (uint128 lpTokenPrice, uint32 zzz) = seekableOracleDAI.extseek();         // Get new dai-eth lp price from uniswap
         assertTrue(zzz > uint32(0));                                              // Verify timestamp was set
         assertTrue(uint256(lpTokenPrice) > WAD);                                  // Verify token price was set
     }
 
     function test_seek_wbtc() public {
-        (uint128 lpTokenPrice, uint32 zzz) = seekableOracleWBTC.extseek();              // Get new wbtc-eth lp price from uniswap
+        (uint128 lpTokenPrice, uint32 zzz) = seekableOracleWBTC.extseek();        // Get new wbtc-eth lp price from uniswap
         assertTrue(zzz > uint32(0));                                              // Verify timestamp was set
         assertTrue(uint256(lpTokenPrice) > WAD);                                  // Verify token price was set
     }
