@@ -210,7 +210,7 @@ contract UNIV2LPOracle {
         return block.timestamp >= add(zzz, hop);
     }
 
-    function seek() public returns (uint128 quote, uint32 ts) {
+    function seek() internal returns (uint128 quote, uint32 ts) {
         // Sync up reserves of uniswap liquidity pool
         UniswapV2PairLike(src).sync();
 
