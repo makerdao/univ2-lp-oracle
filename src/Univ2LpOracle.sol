@@ -216,6 +216,7 @@ contract UNIV2LPOracle {
 
         // Get reserves of uniswap liquidity pool
         (uint112 res0, uint112 res1, uint32 _ts) = UniswapV2PairLike(src).getReserves();
+        require(res0 > 0 && res1 > 0, "UNIV2LPOracle/invalid-reserves");
         ts = _ts;
         require(ts == block.timestamp);
 
@@ -247,7 +248,7 @@ contract UNIV2LPOracle {
 
         // Get LP token supply
         uint256 supply = ERC20Like(src).totalSupply();
-        require(supply != 0, "UNIV2LPOracle/invalid-lp-token-supply");
+        require(supply > 0, "UNIV2LPOracle/invalid-lp-token-supply");
 
         // Calculate price quote of LP token
         quote = uint128(
