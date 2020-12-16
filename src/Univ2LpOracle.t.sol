@@ -17,6 +17,14 @@ interface OSMLike {
     function peek() external returns (bytes32, bool);
 }
 
+contract SeekableOracle is UNIV2LPOracle {
+    constructor(address _src, bytes32 _wat, address _orb0, address _orb1) public UNIV2LPOracle(_src, _wat, _orb0, _orb1) {}
+
+    function extseek() public returns (uint128 quote, uint32 ts) {
+        return seek();
+    }
+}
+
 contract UNIV2LPOracleTest is DSTest {
 
     // --- Math ---
@@ -59,6 +67,8 @@ contract UNIV2LPOracleTest is DSTest {
     UNIV2LPOracle        daiEthLPOracle;
     UNIV2LPOracle        wbtcEthLPOracle;
     IUniswapV2Router02   uniswap;
+    SeekableOracle       seekableOracleDAI;
+    SeekableOracle       seekableOracleWBTC;
 
     address constant DAI_ETH_UNI_POOL  = 0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11;
     address constant WBTC_ETH_UNI_POOL = 0xBb2b8038a1640196FbE3e38816F3e67Cba72D940;
@@ -100,6 +110,28 @@ contract UNIV2LPOracleTest is DSTest {
             WBTC_ORACLE,
             ETH_ORACLE)
         );                                                                        // Build new WBTC-ETH Uniswap LP Orace
+
+        seekableOracleDAI = new SeekableOracle(DAI_ETH_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);
+        seekableOracleDAI.rely(msg.sender);
+        hevm.store(
+            address(ETH_ORACLE),
+            keccak256(abi.encode(address(seekableOracleDAI), uint256(5))),
+            bytes32(uint256(1))
+        );
+
+        seekableOracleWBTC = new SeekableOracle(WBTC_ETH_UNI_POOL, poolNameWBTC, WBTC_ORACLE, ETH_ORACLE);
+        seekableOracleWBTC.rely(msg.sender);
+        hevm.store(
+            address(ETH_ORACLE),
+            keccak256(abi.encode(address(seekableOracleWBTC), uint256(5))),
+            bytes32(uint256(1))
+        );                                                                        // Whitelist DAI-ETH LP Oracle on seekable ETH Oracle
+        hevm.store(
+            address(WBTC_ORACLE),
+            keccak256(abi.encode(address(seekableOracleWBTC), uint256(5))),
+            bytes32(uint256(1))
+        );
+
 
         hevm.store(
             address(ETH_ORACLE),
@@ -218,13 +250,13 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_seek_dai() public {
-        (uint128 lpTokenPrice, uint32 zzz) = daiEthLPOracle.seek();               // Get new dai-eth lp price from uniswap
+        (uint128 lpTokenPrice, uint32 zzz) = seekableOracleDAI.extseek();         // Get new dai-eth lp price from uniswap
         assertTrue(zzz > uint32(0));                                              // Verify timestamp was set
         assertTrue(uint256(lpTokenPrice) > WAD);                                  // Verify token price was set
     }
 
     function test_seek_wbtc() public {
-        (uint128 lpTokenPrice, uint32 zzz) = wbtcEthLPOracle.seek();              // Get new wbtc-eth lp price from uniswap
+        (uint128 lpTokenPrice, uint32 zzz) = seekableOracleWBTC.extseek();        // Get new wbtc-eth lp price from uniswap
         assertTrue(zzz > uint32(0));                                              // Verify timestamp was set
         assertTrue(uint256(lpTokenPrice) > WAD);                                  // Verify token price was set
     }
@@ -501,14 +533,14 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(amounts.length, 2);                                    // Verify array has 2 elements
         assertEq(amounts[0], 10_000 ether);                             // Verify caller traded 10,000 DAI
         assertEq(IERC20(DAI).balanceOf(address(this)), 0);              // Verify caller has 0 DAI
-        assertEq(IERC20(WETH).balanceOf(address(this)), amounts[1]);    // Verify caller has WETH 
+        assertEq(IERC20(WETH).balanceOf(address(this)), amounts[1]);    // Verify caller has WETH
 
         // amounts[1] -> WETH
         uint256 diff =
             amounts[1] > 10_000 ether * WAD / ethPrice ?
             amounts[1] - 10_000 ether * WAD / ethPrice :
             10_000 ether * WAD / ethPrice - amounts[1];                 // Calculate difference between trade and Oracle price
-        assertTrue(diff * WAD / amounts[1] < 0.02 ether);               // Verify less than 2% slippage 
+        assertTrue(diff * WAD / amounts[1] < 0.02 ether);               // Verify less than 2% slippage
 
         hevm.warp(now + 3600);                                          // Time travel 1 hour into the future
 
@@ -526,7 +558,7 @@ contract UNIV2LPOracleTest is DSTest {
         path[0] = WETH;                                                 // Trade from WETH
         path[1] = DAI;                                                  // Trade to DAI
         amounts = uniswap.swapExactTokensForTokens(
-            IERC20(WETH).balanceOf(address(this)), 0, path, address(this), now);    // Trade WETH to DAI 
+            IERC20(WETH).balanceOf(address(this)), 0, path, address(this), now);    // Trade WETH to DAI
         assertEq(amounts.length, 2);                                    // Verify array has 2 elements
         assertEq(amounts[0], ethBal);                                   // Verify caller traded X WETH
         assertEq(IERC20(WETH).balanceOf(address(this)), 0);             // Verify caller has 0 WETH
