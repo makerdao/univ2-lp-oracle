@@ -554,7 +554,7 @@ contract UNIV2LPOracleTest is DSTest {
         (bytes32 val, bool has) = wbtcEthLPOracle.peep();               // Query queued price of WBTC-ETH LP Oracle
         uint256 firstVal = uint256(val);                                // Cast queued price as uint256
 
-        assertTrue(firstVal < 800_000_000 ether && firstVal > 600_000_000 ether);   // 704030123759222892060867448 at time of test
+        assertTrue(firstVal < 900_000_000 ether && firstVal > 600_000_000 ether);   // 704030123759222892060867448 at time of test
         assertTrue(has);                                                // Verify Oracle has valid value
 
         /*** Trade $10k WBTC for ETH ***/
@@ -580,7 +580,7 @@ contract UNIV2LPOracleTest is DSTest {
         wbtcEthLPOracle.poke();                                         // Poke WBTC-ETH LP Oracle
         (val, has) = wbtcEthLPOracle.peep();                            // Query queued price of WBTC-ETH LP Oracle
         uint256 secondVal = uint256(val);                               // Cast queued price as uint256
-        assertTrue(secondVal < 800_000_000 ether && secondVal > 600_000_000 ether);     // 704030254653978027824526079 at time of test
+        assertTrue(secondVal < 900_000_000 ether && secondVal > 600_000_000 ether);     // 704030254653978027824526079 at time of test
         assertTrue(has);                                                // Verify Oracle has valid price
 
         assertTrue(secondVal > firstVal);                               // Verify price of WBTC-ETH LP token increased afer trade
@@ -608,7 +608,7 @@ contract UNIV2LPOracleTest is DSTest {
         wbtcEthLPOracle.poke();                                         // Poke WBTC-ETH LP Oracle
         (val, has) = wbtcEthLPOracle.peep();                            // Query queued price of WBTC-ETH LP Oracle
         uint256 thirdVal = uint256(val);                                // Cast queued price as uint256
-        assertTrue(thirdVal < 800_000_000 ether && thirdVal > 600_000_000 ether);   // 704030385156122678606782694 at time of test
+        assertTrue(thirdVal < 900_000_000 ether && thirdVal > 600_000_000 ether);   // 704030385156122678606782694 at time of test
         assertTrue(has);                                                // Verify Oracle has valid value
 
         assertTrue(thirdVal > secondVal);                               // Verify price of WBTC0ETH LP token increased after trade
