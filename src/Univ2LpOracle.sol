@@ -50,6 +50,7 @@ interface ERC20Like {
 
 interface UniswapV2PairLike {
     function sync()         external;
+    function factory()      external view returns (address);
     function token0()       external view returns (address);
     function token1()       external view returns (address);
     function kLast()        external view returns (uint256);
@@ -211,7 +212,7 @@ contract UNIV2LPOracle {
         return block.timestamp >= add(zzz, hop);
     }
 
-    function seek() internal returns (uint128 quote, uint32 ts) {
+    function seek() public returns (uint128 quote, uint32 ts) {
         // Sync up reserves of uniswap liquidity pool
         UniswapV2PairLike(src).sync();
 
@@ -268,7 +269,6 @@ contract UNIV2LPOracle {
                 supply = add(supply, wdiv(numerator, denominator));
             }
         }
-
 
         // Calculate price quote of LP token
         quote = uint128(
