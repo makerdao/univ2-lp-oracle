@@ -144,7 +144,6 @@ contract UNIV2LPOracleTest is DSTest {
         (val, has) = OSMLike(WBTC_ORACLE).peek();                                 // Query WBTC/USD price from WBTC Oracle
         wbtcPrice = uint256(val);                                                 // Cast WBTC/USD price as uint256
 
-        // Mint $10k of WBTC
         wbtcMintAmt = 10_000 ether * 1E8 / wbtcPrice;                             // Calculate amount of WBTC worth $10,000
         hevm.store(
             address(WBTC),
@@ -227,6 +226,53 @@ contract UNIV2LPOracleTest is DSTest {
         (uint128 lpTokenPrice, uint32 zzz) = wbtcEthLPOracle.seek();              // Get new wbtc-eth lp price from uniswap
         assertTrue(zzz > uint32(0));                                              // Verify timestamp was set
         assertTrue(uint256(lpTokenPrice) > WAD);                                  // Verify token price was set
+    }
+
+    function test_seek_fee_dai() public {
+        address newTo = 0xb478c2975Ab1Ea89e8196811F51a7B7ADe33eB12;                     // Address that will receieve lp fees 
+
+        address uniFactory = UniswapV2PairLike(DAI_ETH_UNI_POOL).factory();             // Get dai-eth lp factory contract
+        hevm.store(
+            address(uniFactory),
+            bytes32(0),
+            bytes32(address(0))
+        );                                                                              // Override factory 'feeTo' field with 0 address
+        hevm.store(
+            address(DAI_ETH_UNI_POOL),
+            bytes32(0xB),
+            bytes32(uint256(0))
+        );                                                                              // Override dai-eth pool 'kLast' field with 0
+        assertTrue(UniswapV2PairLike(DAI_ETH_UNI_POOL).kLast() == uint256(0));          // Verify `kLast` is 0
+        (uint128 firstLPPrice,) = daiEthLPOracle.seek();                                // Query dai-eth lp price Uniswap
+        hevm.store(
+            address(uniFactory),
+            bytes32(address(0)),
+            bytes32(address(newTo))
+        );                                                                              // Override factory 'feeTo' field with new address
+
+        (
+            uint112 res0,
+            uint112 res1,
+        ) = UniswapV2PairLike(DAI_ETH_UNI_POOL).getReserves();                          // Get reserves of token0 and token1 in liquidity pool
+        uint256 k = mul(res0, res1);                                                    // Calculate constant product invariant k (WAD * WAD)
+        hevm.store(
+            address(DAI_ETH_UNI_POOL),
+            bytes32(0xB),
+            bytes32(k)
+        );                                                                              // Override dai-eth pool 'kLast' field with 'k'
+        assertTrue(UniswapV2PairLike(DAI_ETH_UNI_POOL).kLast() == k);                   // Verify invariant `k` is non-zero
+        (uint128 secondLPPrice,) = daiEthLPOracle.seek();                               // Query dai-eth lp price Uniswap
+
+
+
+        //verify firstLPPrice and secondLPPrice is within 0.1%
+        //copy pasted havent modified it yet
+        //diff =
+        //    amounts[1] > 10_000 ether * 1E8 / wbtcPrice ?
+        //    amounts[1] - 10_000 ether * 1E8 / wbtcPrice :
+        //    10_000 ether * 1E8 / wbtcPrice - amounts[1];                // Calculate difference between trade and WBTC Oracle
+        //assertTrue(diff * WAD / amounts[1] < 0.001 ether);               // Verify less than 2% slippage
+
     }
 
     function test_seek_internals() public {
