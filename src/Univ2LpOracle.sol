@@ -264,9 +264,9 @@ contract UNIV2LPOracle {
             uint256 rootK = sqrt(k);
             uint256 rootKLast = sqrt(kLast);
             if (rootK > rootKLast) {
-                uint256 numerator = wmul(supply, sub(rootK, rootKLast));
-                uint256 denominator = add(wmul(rootK, 5), rootKLast);
-                supply = add(supply, wdiv(numerator, denominator));
+                uint256 numerator = mul(supply, sub(rootK, rootKLast));
+                uint256 denominator = add(mul(rootK, 5), rootKLast);
+                supply = add(supply, numerator / denominator);
             }
         }
 

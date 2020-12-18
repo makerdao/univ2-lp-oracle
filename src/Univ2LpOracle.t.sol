@@ -255,6 +255,7 @@ contract UNIV2LPOracleTest is DSTest {
             uint112 res1,
         ) = UniswapV2PairLike(DAI_ETH_UNI_POOL).getReserves();                    // Get reserves of token0 and token1 in liquidity pool
         uint256 k = mul(res0, res1);                                              // Calculate constant product invariant k (WAD * WAD)
+        assertTrue(k > 0);                                                        // Verify invariant k is non-zero
         hevm.store(
             address(DAI_ETH_UNI_POOL),
             bytes32(uint256(11)),
@@ -267,9 +268,9 @@ contract UNIV2LPOracleTest is DSTest {
         uint256 diff =
            firstLPPrice > secondLPPrice ?
            firstLPPrice - secondLPPrice :
-           secondLPPrice - firstLPPrice;                      // Calculate price difference
-        assertTrue(diff * WAD / firstLPPrice < 0.001 ether);  // Verify less than 0.1% difference
-
+           secondLPPrice - firstLPPrice;                                          // Calculate price difference
+        assertTrue(diff * WAD / firstLPPrice < 0.001 ether);                      // Verify less than 0.1% difference
+        assertTrue(firstLPPrice != secondLPPrice);
     }
 
     function test_seek_internals() public {
