@@ -190,6 +190,11 @@ contract UNIV2LPOracle {
         emit Change(src);
     }
 
+    function prev(uint ts) internal view returns (uint64) {
+        require(hop != 0, "UNIV2LPOracle/hop-is-zero");
+        return uint64(ts - (ts % hop));
+    }
+
     function step(uint256 _hop) external auth {
         require(_hop <= uint32(-1), "UNIV2LPOracle/invalid-hop");
         hop = uint32(_hop);
@@ -268,7 +273,7 @@ contract UNIV2LPOracle {
         require(val != 0, "UNIV2LPOracle/invalid-price");
         cur = nxt;
         nxt = Feed(uint128(val), 1);
-        zzz = ts;
+        zzz = prev(ts);
         emit Value(cur.val, nxt.val);
     }
 
