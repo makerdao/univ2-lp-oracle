@@ -183,7 +183,6 @@ contract UNIV2LPOracleTest is DSTest {
             bytes32(uint256(1))
         );
 
-
         hevm.store(
             ETH_ORACLE,
             keccak256(abi.encode(address(daiEthLPOracle), uint256(5))),
@@ -301,15 +300,35 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_seek_dai() public {
-        (uint128 lpTokenPrice, uint32 zzz) = seekableOracleDAI._seek();           // Get new dai-eth lp price from uniswap
+        (uint128 lpTokenPrice128, uint32 zzz) = seekableOracleDAI._seek();        // Get new dai-eth lp price from uniswap
         assertTrue(zzz > uint32(0));                                              // Verify timestamp was set
-        assertTrue(uint256(lpTokenPrice) > WAD);                                  // Verify token price was set
+        assertTrue(lpTokenPrice128 > 0);                                          // Verify price was set
+        uint256 lpTokenPrice = uint256(lpTokenPrice128);
+        uint256 expectedPrice =
+            add(mul(ethPrice, IERC20(WETH).balanceOf(DAI_ETH_UNI_POOL)),
+                mul(WAD,      IERC20(DAI).balanceOf(DAI_ETH_UNI_POOL)))
+            / IERC20(DAI_ETH_UNI_POOL).totalSupply();                             // assumes protocol fee is 0
+        uint256 diff =
+            lpTokenPrice  > expectedPrice ?
+            lpTokenPrice  - expectedPrice :
+            expectedPrice - lpTokenPrice;
+        assertTrue((WAD * diff) / expectedPrice < WAD / 1000);                    // 0.1% tolerance
     }
 
     function test_seek_wbtc() public {
-        (uint128 lpTokenPrice, uint32 zzz) = seekableOracleWBTC._seek();          // Get new wbtc-eth lp price from uniswap
+        (uint128 lpTokenPrice128, uint32 zzz) = seekableOracleWBTC._seek();       // Get new wbtc-eth lp price from uniswap
         assertTrue(zzz > uint32(0));                                              // Verify timestamp was set
-        assertTrue(uint256(lpTokenPrice) > WAD);                                  // Verify token price was set
+        assertTrue(lpTokenPrice128 > 0);                                          // Verify price was set
+        uint256 lpTokenPrice = uint256(lpTokenPrice128);
+        uint256 expectedPrice =
+            add(mul(ethPrice,  IERC20(WETH).balanceOf(WBTC_ETH_UNI_POOL)),
+                mul(wbtcPrice, IERC20(WBTC).balanceOf(WBTC_ETH_UNI_POOL) * 10**10))
+            / IERC20(WBTC_ETH_UNI_POOL).totalSupply();                             // assumes protocol fee is 0
+        uint256 diff =
+            lpTokenPrice  > expectedPrice ?
+            lpTokenPrice  - expectedPrice :
+            expectedPrice - lpTokenPrice;
+        assertTrue((WAD * diff) / expectedPrice < WAD / 1000);                    // 0.1% tolerance
     }
 
     function test_seek_internals() public {
