@@ -38,8 +38,8 @@
 // Now that we've calculated normalized values of r_x and r_y that are not prone to manipulation by an attacker,
 // we can calculate the price of an lp token using the following formula.
 //
-// p_lp = (r_x * p_x + r_y * p_y) / supply_lp
-//
+// p_lp = (r_x * p_x + r_y * p_y) / supply_lp = 2 * sqrt(k * p_x * p_y) / supply_lp
+
 pragma solidity ^0.6.11;
 
 interface ERC20Like {
