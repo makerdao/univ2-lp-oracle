@@ -300,7 +300,10 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_seek_dai() public {
+        uint256 preGas = gasleft();
         (uint128 lpTokenPrice128, uint32 zzz) = seekableOracleDAI._seek();        // Get new dai-eth lp price from uniswap
+        uint256 postGas = gasleft();
+        log_named_uint("dai seek gas", preGas - postGas);
         assertTrue(zzz > uint32(0));                                              // Verify timestamp was set
         assertTrue(lpTokenPrice128 > 0);                                          // Verify price was set
         uint256 lpTokenPrice = uint256(lpTokenPrice128);
@@ -316,7 +319,10 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_seek_wbtc() public {
+        uint256 preGas = gasleft();
         (uint128 lpTokenPrice128, uint32 zzz) = seekableOracleWBTC._seek();       // Get new wbtc-eth lp price from uniswap
+        uint256 postGas = gasleft();
+        log_named_uint("wbtc seek gas", preGas - postGas);
         assertTrue(zzz > uint32(0));                                              // Verify timestamp was set
         assertTrue(lpTokenPrice128 > 0);                                          // Verify price was set
         uint256 lpTokenPrice = uint256(lpTokenPrice128);
@@ -329,6 +335,15 @@ contract UNIV2LPOracleTest is DSTest {
             lpTokenPrice  - expectedPrice :
             expectedPrice - lpTokenPrice;
         assertTrue((WAD * diff) / expectedPrice < WAD / 1000);                    // 0.1% tolerance
+    }
+
+    function testFail_seek_zero_LPToken_supply() public {
+        hevm.store(
+            DAI_ETH_UNI_POOL,
+            0,                                                                    // totalSupply
+            bytes32(uint256(0))
+        );
+        (uint128 lpTokenPrice128, uint32 zzz) = seekableOracleDAI._seek();        // Get new dai-eth lp price from uniswap
     }
 
     function test_seek_internals() public {
@@ -357,11 +372,11 @@ contract UNIV2LPOracleTest is DSTest {
         /*** END TEST 1 ***/
 
         // Adjust reserves w/ respect to decimals
-        if (wbtcEthLPOracle.dec0() != uint8(18)) {                                // Check if token0 has non-standard decimals
-            res0 = uint112(res0 * 10 ** sub(18, wbtcEthLPOracle.dec0()));         // Adjust reserves of token0
+        if (wbtcEthLPOracle.normalizer0() > 1) {                                  // Check if token0 has non-standard decimals
+            res0 = uint112(res0 * wbtcEthLPOracle.normalizer0());                 // Adjust reserves of token0
         }
-        if (wbtcEthLPOracle.dec1() != uint8(18)) {                                // Check if token1 has non-standard decimals
-            res1 = uint112(res1 * 10 ** sub(18, wbtcEthLPOracle.dec1()));         // Adjust reserve of token1
+        if (wbtcEthLPOracle.normalizer1() > 1) {                                  // Check if token1 has non-standard decimals
+            res1 = uint112(res1 * wbtcEthLPOracle.normalizer1());                 // Adjust reserve of token1
         }
         /*** BEGIN TEST 2 ***/
         assertEq(res1, ERC20Like(tok1).balanceOf(WBTC_ETH_UNI_POOL));             // Verify no adjustment for WETH (18 decimals)

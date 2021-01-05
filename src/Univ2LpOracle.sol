@@ -98,8 +98,8 @@ contract UNIV2LPOracle {
     modifier toll { require(bud[msg.sender] == 1, "UNIV2LPOracle/contract-not-whitelisted"); _; }
 
     // --- Data ---
-    uint8   public immutable dec0;  // Decimals of token0
-    uint8   public immutable dec1;  // Decimals of token1
+    uint256 public immutable normalizer0;  // Multiplicative factor that normalizes a token0 balance to a WAD; 10^(18 - dec)
+    uint256 public immutable normalizer1;  // Multiplicative factor that normalizes a token1 balance to a WAD; 10^(18 - dec)
     address public           orb0;  // Oracle for token0, ideally a Medianizer
     address public           orb1;  // Oracle for token1, ideally a Medianizer
     bytes32 public immutable wat;   // Token whose price is being tracked
@@ -169,8 +169,12 @@ contract UNIV2LPOracle {
         src  = _src;
         zzz  = 0;
         wat  = _wat;
-        dec0 = uint8(ERC20Like(UniswapV2PairLike(_src).token0()).decimals());  // Get decimals of token0
-        dec1 = uint8(ERC20Like(UniswapV2PairLike(_src).token1()).decimals());  // Get decimals of token1
+        uint256 _normalizer0 = 10 ** sub(18, uint8(ERC20Like(UniswapV2PairLike(_src).token0()).decimals()));  // Calculate normalization factor of token0
+        require(_normalizer0 >= 1);
+        normalizer0 = _normalizer0;
+        uint256 _normalizer1 = 10 ** sub(18, uint8(ERC20Like(UniswapV2PairLike(_src).token1()).decimals()));  // Calculate normalization factor of token0
+        require(_normalizer1 >= 1);
+        normalizer1 = _normalizer1;
         orb0 = _orb0;
         orb1 = _orb1;
     }
@@ -221,8 +225,9 @@ contract UNIV2LPOracle {
         require(ts == block.timestamp);
 
         // Adjust reserves w/ respect to decimals
-        if (dec0 != uint8(18)) res0 = uint112(res0 * 10 ** sub(18, dec0));
-        if (dec1 != uint8(18)) res1 = uint112(res1 * 10 ** sub(18, dec1));
+        // TODO: is the risk of overflow here worth mitigating? (consider an attacker who can mint a token at will)
+        if (normalizer0 > 1) res0 = uint112(res0 * normalizer0);
+        if (normalizer1 > 1) res1 = uint112(res1 * normalizer1);
 
         // Calculate constant product invariant k (WAD * WAD)
         uint256 k = mul(res0, res1);
@@ -233,31 +238,15 @@ contract UNIV2LPOracle {
         require(val0 != 0, "UNIV2LPOracle/invalid-oracle-0-price");
         require(val1 != 0, "UNIV2LPOracle/invalid-oracle-1-price");
 
-        // Calculate normalized balances of token0 and token1
-        uint256 bal0 =
-            sqrt(
-                wmul(
-                    k,
-                    wdiv(
-                        val1,
-                        val0
-                    )
-                )
-            );
-        uint256 bal1 = wdiv(k, bal0) / WAD;
-
         // Get LP token supply
         uint256 supply = ERC20Like(src).totalSupply();
-        require(supply > 0, "UNIV2LPOracle/invalid-lp-token-supply");
 
-        // Calculate price quote of LP token
+        // No need to check that the supply is nonzero, Solidity reverts on division by zero.
+
         quote = uint128(
             wdiv(
-                add(
-                    wmul(bal0, val0),  // (WAD)
-                    wmul(bal1, val1)   // (WAD)
-                ),
-                supply  // (WAD)
+                mul(2, sqrt(wmul(k, wmul(val0, val1)))),
+                supply
             )
         );
     }
