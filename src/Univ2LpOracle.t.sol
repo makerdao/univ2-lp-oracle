@@ -167,7 +167,7 @@ contract UNIV2LPOracleTest is DSTest {
         seekableOracleDAI = new SeekableOracle(DAI_ETH_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);
         seekableOracleDAI.rely(msg.sender);
         hevm.store(
-            address(ETH_ORACLE),
+            ETH_ORACLE,
             keccak256(abi.encode(address(seekableOracleDAI), uint256(5))),
             bytes32(uint256(1))
         );
@@ -175,29 +175,29 @@ contract UNIV2LPOracleTest is DSTest {
         seekableOracleWBTC = new SeekableOracle(WBTC_ETH_UNI_POOL, poolNameWBTC, WBTC_ORACLE, ETH_ORACLE);
         seekableOracleWBTC.rely(msg.sender);
         hevm.store(
-            address(ETH_ORACLE),
+            ETH_ORACLE,
             keccak256(abi.encode(address(seekableOracleWBTC), uint256(5))),
             bytes32(uint256(1))
         );                                                                        // Whitelist DAI-ETH LP Oracle on seekable ETH Oracle
         hevm.store(
-            address(WBTC_ORACLE),
+            WBTC_ORACLE,
             keccak256(abi.encode(address(seekableOracleWBTC), uint256(5))),
             bytes32(uint256(1))
         );
 
 
         hevm.store(
-            address(ETH_ORACLE),
+            ETH_ORACLE,
             keccak256(abi.encode(address(daiEthLPOracle), uint256(5))),
             bytes32(uint256(1))
         );                                                                        // Whitelist DAI-ETH LP Oracle on ETH Oracle
         hevm.store(
-            address(WBTC_ORACLE),
+            WBTC_ORACLE,
             keccak256(abi.encode(address(wbtcEthLPOracle), uint256(5))),
             bytes32(uint256(1))
         );                                                                        // Whitelist WBTC-ETH LP Oracle on WBTC Oracle
         hevm.store(
-            address(ETH_ORACLE),
+            ETH_ORACLE,
             keccak256(abi.encode(address(wbtcEthLPOracle), uint256(5))),
             bytes32(uint256(1))
         );                                                                        // Whitelist WBTC-ETH LP Oracle on ETH Oracle
@@ -207,14 +207,14 @@ contract UNIV2LPOracleTest is DSTest {
         IERC20(WETH).approve(UNISWAP_ROUTER_02, uint(-1));                        // Approve WETH to trade on Uniswap
 
         hevm.store(
-            address(DAI),
+            DAI,
             keccak256(abi.encode(address(this), uint256(2))),
             bytes32(uint(10_000 ether))
         );                                                                        // Mint 10,000 DAI
         IERC20(DAI).approve(UNISWAP_ROUTER_02, uint(-1));                         // Approve DAI to trade on Uniswap
 
         hevm.store(
-            address(ETH_ORACLE),
+            ETH_ORACLE,
             keccak256(abi.encode(address(this), uint256(5))),
             bytes32(uint256(1))
         );                                                                        // Whitelist caller on ETH Oracle
@@ -222,7 +222,7 @@ contract UNIV2LPOracleTest is DSTest {
         ethPrice = uint256(val);                                                  // Cast ETH/USD price as uint256
 
         hevm.store(
-            address(WBTC_ORACLE),
+            WBTC_ORACLE,
             keccak256(abi.encode(address(this), uint256(5))),
             bytes32(uint256(1))
         );                                                                        // Whitelist caller on WBTC Oracle
@@ -232,7 +232,7 @@ contract UNIV2LPOracleTest is DSTest {
         // Mint $10k of WBTC
         wbtcMintAmt = 10_000 ether * 1E8 / wbtcPrice;                             // Calculate amount of WBTC worth $10,000
         hevm.store(
-            address(WBTC),
+            WBTC,
             keccak256(abi.encode(address(this), uint256(0))),
             bytes32(wbtcMintAmt)
         );                                                                        // Mint $10,000 worth of WBTC
