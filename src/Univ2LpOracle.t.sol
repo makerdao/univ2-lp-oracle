@@ -401,39 +401,20 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(val1 > 0);                                                     // Verify token1 price is valid
         /*** END TEST 4 ***/
 
-        uint bal0 = sqrt(wmul(k, wdiv(val1, val0)));                              // Calculate normalized token0 balance (WAD)
-        uint bal1 = wdiv(k, bal0) / WAD;                                          // Calculate normalized token1 balance
-
-        /*** BEGIN TEST 5 ***/
-        // Verify normalized reserves are within 1.3% margin of actual reserves
-        // During times of high price volatility this condition may not hold
-        assertTrue(bal0 > 0);                                                     // Verify normalized token0 balance is valid
-        assertTrue(bal1 > 0);                                                     // Verify normalized token1 balance is valid
-        uint diff0 = uint(res0) > bal0 ? uint(res0) - bal0 : bal0 - uint(res0);
-        uint diff1 = uint(res1) > bal1 ? uint(res1) - bal1 : bal1 - uint(res1);
-        assertTrue(diff0 * RAY / bal0 < 1 * RAY / 100);                           // Verify normalized token0 balance is within 1.3% of token0 balance
-        assertTrue(diff1 * RAY / bal1 < 1 * RAY / 100);                           // Verify normalized token1 balance is within 1.3% of token0 balance
-        /*** END TEST 5 ***/
-
         uint supply = ERC20Like(WBTC_ETH_UNI_POOL).totalSupply();                 // Get LP token supply
 
-        /*** BEGIN TEST 6 ***/
+        /*** BEGIN TEST 5 ***/
         assertTrue(supply > WAD / 1000);                                          // Verify LP token supply is valid (supply can be less than WAD if price > mkt cap)
-        /*** END TEST 6 ***/
+        /*** END TEST 5 ***/
 
         uint128 quote = uint128(                                                  // Calculate LP token price quote
-            wdiv(
-                add(
-                    wmul(bal0, val0), // (WAD)
-                    wmul(bal1, val1)  // (WAD)
-                ),
-                supply // (WAD)
-            )
+                mul(2 * WAD, sqrt(wmul(k, wmul(val0, val1))))
+                    / supply
         );
 
-        /*** BEGIN TEST 7 ***/
+        /*** BEGIN TEST 6 ***/
         assertTrue(quote > WAD);                                                  // Verify LP token price quote is valid
-        /*** END TEST 7 ***/
+        /*** END TEST 6 ***/
 
         ///////////////////////////////////////
         //                                   //
