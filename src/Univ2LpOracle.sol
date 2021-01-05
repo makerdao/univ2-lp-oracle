@@ -244,10 +244,8 @@ contract UNIV2LPOracle {
         // No need to check that the supply is nonzero, Solidity reverts on division by zero.
 
         quote = uint128(
-            wdiv(
-                mul(2, sqrt(wmul(k, wmul(val0, val1)))),
-                supply
-            )
+                mul(2 * WAD, sqrt(wmul(k, wmul(val0, val1))))
+                    / supply
         );
     }
 
