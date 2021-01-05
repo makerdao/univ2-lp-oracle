@@ -20,7 +20,7 @@ interface OSMLike {
 contract SeekableOracle is UNIV2LPOracle {
     constructor(address _src, bytes32 _wat, address _orb0, address _orb1) public UNIV2LPOracle(_src, _wat, _orb0, _orb1) {}
 
-    function extseek() public returns (uint128 quote, uint32 ts) {
+    function _seek() public returns (uint128 quote, uint32 ts) {
         return seek();
     }
 }
@@ -165,7 +165,6 @@ contract UNIV2LPOracleTest is DSTest {
         );                                                                        // Build new WBTC-ETH Uniswap LP Orace
 
         seekableOracleDAI = new SeekableOracle(DAI_ETH_UNI_POOL, poolNameDAI, USDC_ORACLE, ETH_ORACLE);
-        seekableOracleDAI.rely(msg.sender);
         hevm.store(
             ETH_ORACLE,
             keccak256(abi.encode(address(seekableOracleDAI), uint256(5))),
@@ -173,7 +172,6 @@ contract UNIV2LPOracleTest is DSTest {
         );
 
         seekableOracleWBTC = new SeekableOracle(WBTC_ETH_UNI_POOL, poolNameWBTC, WBTC_ORACLE, ETH_ORACLE);
-        seekableOracleWBTC.rely(msg.sender);
         hevm.store(
             ETH_ORACLE,
             keccak256(abi.encode(address(seekableOracleWBTC), uint256(5))),
@@ -303,13 +301,13 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_seek_dai() public {
-        (uint128 lpTokenPrice, uint32 zzz) = seekableOracleDAI.extseek();         // Get new dai-eth lp price from uniswap
+        (uint128 lpTokenPrice, uint32 zzz) = seekableOracleDAI._seek();           // Get new dai-eth lp price from uniswap
         assertTrue(zzz > uint32(0));                                              // Verify timestamp was set
         assertTrue(uint256(lpTokenPrice) > WAD);                                  // Verify token price was set
     }
 
     function test_seek_wbtc() public {
-        (uint128 lpTokenPrice, uint32 zzz) = seekableOracleWBTC.extseek();        // Get new wbtc-eth lp price from uniswap
+        (uint128 lpTokenPrice, uint32 zzz) = seekableOracleWBTC._seek();          // Get new wbtc-eth lp price from uniswap
         assertTrue(zzz > uint32(0));                                              // Verify timestamp was set
         assertTrue(uint256(lpTokenPrice) > WAD);                                  // Verify token price was set
     }
