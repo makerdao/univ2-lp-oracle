@@ -96,6 +96,59 @@ contract UNIV2LPOracleTest is DSTest {
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);                  // Configure hevm
         hevm.warp(now);                                                           // Set time to latest block
 
+        // Set relevant storage values as they were in block 11461654
+        hevm.store(
+            DAI_ETH_UNI_POOL,
+            0,                                                                    // totalSupply
+            bytes32(uint256(1882428696129524169269340))
+        );
+        hevm.store(
+            DAI_ETH_UNI_POOL,
+            bytes32(uint256(8)),                                                  // reserve0, reserve1, and blockTimestampLast
+            bytes32(uint256(43353987475243871752608912172418385489740068120774565181786433903143712498119))
+        );
+        hevm.store(
+            DAI,
+            keccak256(abi.encode(DAI_ETH_UNI_POOL, uint256(2))),                  // DAI balance of DAI_ETH pool
+            bytes32(uint(55130522579388813557146055))
+        );
+        hevm.store(
+            WETH,
+            keccak256(abi.encode(DAI_ETH_UNI_POOL, uint256(3))),                  // WETH balance of DAI_ETH pool
+            bytes32(uint(94328066153704376274664))
+        );
+        hevm.store(
+            WBTC_ETH_UNI_POOL,
+            0,                                                                    // totalSupply
+            bytes32(uint256(185917965159193313))
+        );
+        hevm.store(
+            WBTC_ETH_UNI_POOL ,
+            bytes32(uint256(8)),                                                  // reserve0, reserve1, and blockTimestampLast
+            bytes32(uint256(43353988796281258443110612805302462270865328117852610699179961909467622877495))
+        );
+        hevm.store(
+            WETH,
+            keccak256(abi.encode(WBTC_ETH_UNI_POOL, uint256(3))),                 // WETH balance of WBTC_ETH pool
+            bytes32(uint(117506766732526502569271))
+        );
+        hevm.store(
+            WBTC,
+            keccak256(abi.encode(WBTC_ETH_UNI_POOL, uint256(0))),                 // WBTC balance of WBTC_ETH pool
+            bytes32(uint(353924491575))
+        );
+        hevm.store(
+            ETH_ORACLE,
+            bytes32(uint256(3)),                                                  // cur
+            bytes32(uint256(340282366920938464048374607431768211456))
+        );
+        hevm.store(
+            WBTC_ORACLE,
+            bytes32(uint256(3)),                                                  // cur
+            bytes32(uint256(340282366920938482841324607431768211456))
+        );
+        hevm.warp(1608088819);  // block.timestamp for block 11461654
+
         factory = new UNIV2LPOracleFactory();                                     // Instantiate new factory
 
         daiEthLPOracle = UNIV2LPOracle(factory.build(
