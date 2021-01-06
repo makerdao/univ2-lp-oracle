@@ -169,10 +169,8 @@ contract UNIV2LPOracle {
         src  = _src;
         zzz  = 0;
         wat  = _wat;
-        uint256 _normalizer0 = 10 ** sub(18, uint8(ERC20Like(UniswapV2PairLike(_src).token0()).decimals()));  // Calculate normalization factor of token0
-        require(_normalizer0 >= 1);
-        normalizer0 = _normalizer0;
-        uint256 _normalizer1 = 10 ** sub(18, uint8(ERC20Like(UniswapV2PairLike(_src).token1()).decimals()));  // Calculate normalization factor of token0
+        normalizer0 = 10 ** sub(18, uint8(ERC20Like(UniswapV2PairLike(_src).token0()).decimals()));  // Calculate normalization factor of token0
+        normalizer1 = 10 ** sub(18, uint8(ERC20Like(UniswapV2PairLike(_src).token1()).decimals()));  // Calculate normalization factor of token1
         require(_normalizer1 >= 1);
         normalizer1 = _normalizer1;
         orb0 = _orb0;
