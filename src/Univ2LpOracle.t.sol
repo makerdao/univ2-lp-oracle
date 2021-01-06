@@ -343,7 +343,7 @@ contract UNIV2LPOracleTest is DSTest {
             0,                                                                    // totalSupply
             bytes32(uint256(0))
         );
-        (uint128 lpTokenPrice128, uint32 zzz) = seekableOracleDAI._seek();        // Get new dai-eth lp price from uniswap
+        seekableOracleDAI._seek();                                                // Get new dai-eth lp price from uniswap
     }
 
     function test_seek_internals() public {
@@ -372,11 +372,11 @@ contract UNIV2LPOracleTest is DSTest {
         /*** END TEST 1 ***/
 
         // Adjust reserves w/ respect to decimals
-        if (wbtcEthLPOracle.normalizer0() > 1) {                                  // Check if token0 has non-standard decimals
-            res0 = uint112(res0 * wbtcEthLPOracle.normalizer0());                 // Adjust reserves of token0
+        if (ERC20Like(tok0).decimals() < 18) {                                        // Check if token0 has non-standard decimals
+            res0 = uint112(res0 * 10 ** (18 - uint256(ERC20Like(tok0).decimals())));  // Adjust reserves of token0
         }
-        if (wbtcEthLPOracle.normalizer1() > 1) {                                  // Check if token1 has non-standard decimals
-            res1 = uint112(res1 * wbtcEthLPOracle.normalizer1());                 // Adjust reserve of token1
+        if (ERC20Like(tok1).decimals() < 18) {                                        // Check if token1 has non-standard decimals
+            res1 = uint112(res1 * 10 ** (18 - uint256(ERC20Like(tok1).decimals())));  // Adjust reserves of token1
         }
         /*** BEGIN TEST 2 ***/
         assertEq(res1, ERC20Like(tok1).balanceOf(WBTC_ETH_UNI_POOL));             // Verify no adjustment for WETH (18 decimals)

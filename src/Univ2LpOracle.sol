@@ -98,11 +98,11 @@ contract UNIV2LPOracle {
     modifier toll { require(bud[msg.sender] == 1, "UNIV2LPOracle/contract-not-whitelisted"); _; }
 
     // --- Data ---
-    uint256 public immutable normalizer0;  // Multiplicative factor that normalizes a token0 balance to a WAD; 10^(18 - dec)
-    uint256 public immutable normalizer1;  // Multiplicative factor that normalizes a token1 balance to a WAD; 10^(18 - dec)
-    address public           orb0;  // Oracle for token0, ideally a Medianizer
-    address public           orb1;  // Oracle for token1, ideally a Medianizer
-    bytes32 public immutable wat;   // Token whose price is being tracked
+    uint256 private immutable normalizer0;  // Multiplicative factor that normalizes a token0 balance to a WAD; 10^(18 - dec)
+    uint256 private immutable normalizer1;  // Multiplicative factor that normalizes a token1 balance to a WAD; 10^(18 - dec)
+    address public            orb0;  // Oracle for token0, ideally a Medianizer
+    address public            orb1;  // Oracle for token1, ideally a Medianizer
+    bytes32 public  immutable wat;   // Token whose price is being tracked
 
     uint32  public hop = 1 hours;   // Minimum time inbetween price updates
     address public src;             // Price source
@@ -169,10 +169,8 @@ contract UNIV2LPOracle {
         src  = _src;
         zzz  = 0;
         wat  = _wat;
-        normalizer0 = 10 ** sub(18, uint8(ERC20Like(UniswapV2PairLike(_src).token0()).decimals()));  // Calculate normalization factor of token0
-        normalizer1 = 10 ** sub(18, uint8(ERC20Like(UniswapV2PairLike(_src).token1()).decimals()));  // Calculate normalization factor of token1
-        require(_normalizer1 >= 1);
-        normalizer1 = _normalizer1;
+        normalizer0 = 10 ** sub(18, uint256(ERC20Like(UniswapV2PairLike(_src).token0()).decimals()));  // Calculate normalization factor of token0
+        normalizer1 = 10 ** sub(18, uint256(ERC20Like(UniswapV2PairLike(_src).token1()).decimals()));  // Calculate normalization factor of token1
         orb0 = _orb0;
         orb1 = _orb1;
     }
