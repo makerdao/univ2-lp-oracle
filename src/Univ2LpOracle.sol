@@ -106,7 +106,7 @@ contract UNIV2LPOracle {
 
     uint32  public hop = 1 hours;   // Minimum time inbetween price updates
     address public src;             // Price source
-    uint32  public zzz;             // Time of last price update
+    uint64  public zzz;             // Time of last price update
 
     struct Feed {
         uint128 val;  // Price
