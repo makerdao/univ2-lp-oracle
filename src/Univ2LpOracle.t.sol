@@ -713,7 +713,7 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(thirdVal > secondVal);                               // Verify price of WBTC0ETH LP token increased after trade
     }
 
-    // This test will fail if the value of `val` at peep does not match memory slot 0x3
+    // This test will fail if the value of `val` at peek does not match memory slot 0x3
     function testCurSlot0x3() public {
         daiEthLPOracle.poke();                                       // Poke oracle
         hevm.warp(add(daiEthLPOracle.zzz(), daiEthLPOracle.hop()));  // Time travel into the future
@@ -739,7 +739,7 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(uint256(uint128(memhas)), 1);             // Assert slot has == 1
     }
 
-    // This test will fail if the value of `nxt` at peep does not match memory slot 0x4
+    // This test will fail if the value of `val` at peep does not match memory slot 0x4
     function testNxtSlot0x4() public {
         daiEthLPOracle.poke();                                       // Poke oracle
         hevm.warp(add(daiEthLPOracle.zzz(), daiEthLPOracle.hop()));  // Time travel into the future
