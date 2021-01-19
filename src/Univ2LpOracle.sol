@@ -89,32 +89,33 @@ contract UNIV2LPOracle {
         _;
     }
 
-    // --- Stop ---
-    uint256 public stopped;  // Stop/start ability to read
-    modifier stoppable { require(stopped == 0, "UNIV2LPOracle/is-stopped"); _; }
+    address public src;             // Price source
+    uint16  public hop = 1 hours;   // Minimum time inbetween price updates
+    uint64  public zzz;             // Time of last price update
+    bytes32 public immutable wat;   // Token whose price is being tracked
 
     // --- Whitelisting ---
     mapping (address => uint256) public bud;
     modifier toll { require(bud[msg.sender] == 1, "UNIV2LPOracle/contract-not-whitelisted"); _; }
-
-    // --- Data ---
-    uint256 private immutable normalizer0;  // Multiplicative factor that normalizes a token0 balance to a WAD; 10^(18 - dec)
-    uint256 private immutable normalizer1;  // Multiplicative factor that normalizes a token1 balance to a WAD; 10^(18 - dec)
-    address public            orb0;  // Oracle for token0, ideally a Medianizer
-    address public            orb1;  // Oracle for token1, ideally a Medianizer
-    bytes32 public  immutable wat;   // Token whose price is being tracked
-
-    uint32  public hop = 1 hours;   // Minimum time inbetween price updates
-    address public src;             // Price source
-    uint32  public zzz;             // Time of last price update
 
     struct Feed {
         uint128 val;  // Price
         uint128 has;  // Is price valid
     }
 
-    Feed    public cur;  // Current price
-    Feed    public nxt;  // Queued price
+    Feed    public cur;  // Current price  (mem slot 0x3)
+    Feed    public nxt;  // Queued price   (mem slot 0x4)
+
+    // --- Stop ---
+    uint256 public stopped;  // Stop/start ability to read
+    modifier stoppable { require(stopped == 0, "UNIV2LPOracle/is-stopped"); _; }
+
+    // --- Data ---
+    uint256 private immutable normalizer0;  // Multiplicative factor that normalizes a token0 balance to a WAD; 10^(18 - dec)
+    uint256 private immutable normalizer1;  // Multiplicative factor that normalizes a token1 balance to a WAD; 10^(18 - dec)
+
+    address public            orb0;  // Oracle for token0, ideally a Medianizer
+    address public            orb1;  // Oracle for token1, ideally a Medianizer
 
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
@@ -191,8 +192,8 @@ contract UNIV2LPOracle {
     }
 
     function step(uint256 _hop) external auth {
-        require(_hop <= uint32(-1), "UNIV2LPOracle/invalid-hop");
-        hop = uint32(_hop);
+        require(_hop <= uint16(-1), "UNIV2LPOracle/invalid-hop");
+        hop = uint16(_hop);
         emit Step(hop);
     }
 
