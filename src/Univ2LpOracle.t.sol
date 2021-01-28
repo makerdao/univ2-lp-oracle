@@ -713,6 +713,54 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(thirdVal > secondVal);                               // Verify price of WBTC0ETH LP token increased after trade
     }
 
+    function test_stop() public {
+        daiEthLPOracle.poke();                                      // Poke DAI-ETH LP Oracle
+        daiEthLPOracle.kiss(address(this));                         // Whitelist caller on DAI-ETH LP Oracle
+        (bytes32 val, bool has) = daiEthLPOracle.peep();            // Query queued price of DAI-ETH LP Oracle
+        uint256 resVal = uint256(val);                              // Cast queued price as uint256
+
+        assertTrue(resVal < 100 ether && resVal > 50 ether);        // 57327394135985707908 at time of test
+        assertTrue(has);                                            // Verify Oracle has valid value
+
+        assertTrue(daiEthLPOracle.stopped() != 1);
+        daiEthLPOracle.stop();
+        assertTrue(daiEthLPOracle.stopped() == 1);
+
+        (val, has) = daiEthLPOracle.peep();                         // Query queued price of DAI-ETH LP Oracle
+        resVal = uint256(val);
+        assertEq(resVal, 0);
+        assertTrue(!has);
+
+        (val, has) = daiEthLPOracle.peek();
+        resVal = uint256(val);
+        assertTrue(!has);
+        assertEq(resVal, 0);
+    }
+
+    function test_stop_start_poke() public {
+        daiEthLPOracle.poke();                                      // Poke DAI-ETH LP Oracle
+        daiEthLPOracle.kiss(address(this));                         // Whitelist caller on DAI-ETH LP Oracle
+        (bytes32 val, bool has) = daiEthLPOracle.peep();            // Query queued price of DAI-ETH LP Oracle
+        uint256 resVal = uint256(val);                              // Cast queued price as uint256
+
+        assertTrue(resVal < 100 ether && resVal > 50 ether);        // 57327394135985707908 at time of test
+        assertTrue(has);                                            // Verify Oracle has valid value
+
+        daiEthLPOracle.stop();
+        hevm.warp(now + 3600);
+
+        daiEthLPOracle.start();
+        assertTrue(daiEthLPOracle.stopped() != 1);
+
+        daiEthLPOracle.poke();
+
+        (val, has) = daiEthLPOracle.peep();                         // Query queued price of DAI-ETH LP Oracle
+        resVal = uint256(val);                                      // Cast queued price as uint256
+
+        assertTrue(resVal < 100 ether && resVal > 50 ether);        // 57327394135985707908 at time of test
+        assertTrue(has);                                            // Verify Oracle has valid value
+    }
+
     // This test will fail if the value of `val` at peek does not match memory slot 0x3
     function testCurSlot0x3() public {
         daiEthLPOracle.poke();                                       // Poke oracle
