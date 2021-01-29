@@ -161,6 +161,8 @@ contract UNIV2LPOracle {
     event Start();
     event Value(uint128 curVal, uint128 nxtVal);
     event Link(uint256 id, address orb);
+    event Kiss(address a);
+    event Diss(address a);
 
     // --- Init ---
     constructor (address _src, bytes32 _wat, address _orb0, address _orb1) public {
@@ -239,7 +241,6 @@ contract UNIV2LPOracle {
         uint256 supply = ERC20Like(src).totalSupply();
 
         // No need to check that the supply is nonzero, Solidity reverts on division by zero.
-
         quote = uint128(
                 mul(2 * WAD, sqrt(wmul(k, wmul(val0, val1))))
                     / supply
@@ -272,22 +273,26 @@ contract UNIV2LPOracle {
     function kiss(address a) external auth {
         require(a != address(0), "UNIV2LPOracle/no-contract-0");
         bud[a] = 1;
+        emit Kiss(a);
     }
 
     function kiss(address[] calldata a) external auth {
         for(uint i = 0; i < a.length; i++) {
             require(a[i] != address(0), "UNIV2LPOracle/no-contract-0");
             bud[a[i]] = 1;
+            emit Kiss(a[i]);
         }
     }
 
     function diss(address a) external auth {
         bud[a] = 0;
+        emit Diss(a);
     }
 
     function diss(address[] calldata a) external auth {
         for(uint i = 0; i < a.length; i++) {
             bud[a[i]] = 0;
+            emit Diss(a[i]);
         }
     }
 }
