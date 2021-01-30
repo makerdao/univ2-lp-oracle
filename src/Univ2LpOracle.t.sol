@@ -747,7 +747,7 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(has);                                            // Verify Oracle has valid value
 
         daiEthLPOracle.stop();
-        hevm.warp(now + 3600);
+        // No time change between stop and start
 
         daiEthLPOracle.start();
         assertTrue(daiEthLPOracle.stopped() != 1);

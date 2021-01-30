@@ -180,6 +180,7 @@ contract UNIV2LPOracle {
         stopped = 1;
         delete cur;
         delete nxt;
+        zzz = 0;
         emit Stop();
     }
 
