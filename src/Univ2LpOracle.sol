@@ -180,6 +180,9 @@ contract UNIV2LPOracle {
 
     function stop() external auth {
         stopped = 1;
+        delete cur;
+        delete nxt;
+        zzz = 0;
         emit Stop();
     }
 
