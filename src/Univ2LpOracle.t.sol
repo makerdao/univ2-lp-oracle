@@ -467,12 +467,6 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(nxtVal > 0);                                      // Verify queued oracle value
     }
 
-    function test_change() public {
-        assertEq(daiEthLPOracle.src(), DAI_ETH_UNI_POOL);            // Verify source is DAI-ETH pool
-        daiEthLPOracle.change(WBTC_ETH_UNI_POOL);                    // Change source to WBTC-ETH pool
-        assertEq(daiEthLPOracle.src(), WBTC_ETH_UNI_POOL);           // Verify source is WBTC-ETH pool
-    }
-
     function test_pass() public {
         assertTrue(daiEthLPOracle.pass());                           // Verify time interval `hop`has elapsed
         daiEthLPOracle.poke();                                       // Poke oracle
