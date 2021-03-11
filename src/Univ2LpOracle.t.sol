@@ -24,6 +24,14 @@ contract SeekableOracle is UNIV2LPOracle {
     function _seek() public returns (uint128 quote, uint32 ts) {
         return seek();
     }
+
+    function _cur() public returns (uint128 val, uint128 has) {
+        return (cur.val, cur.has);
+    }
+
+    function _nxt() public returns (uint128 val, uint128 has) {
+        return (nxt.val, nxt.has);
+    }
 }
 
 contract UNIV2LPOracleTest is DSTest {
@@ -425,46 +433,46 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_poke() public {
-        (uint128 curVal, uint128 curHas) = daiEthLPOracle.cur();     // Get current value
-        assertEq(uint256(curVal), 0);                                // Verify oracle has no current value
-        assertEq(uint256(curHas), 0);                                // Verify oracle has no current value
+        (uint128 curVal, uint128 curHas) = seekableOracleDAI._cur();  // Get current value
+        assertEq(uint256(curVal), 0);                                 // Verify oracle has no current value
+        assertEq(uint256(curHas), 0);                                 // Verify oracle has no current value
 
-        (uint128 nxtVal, uint128 nxtHas) = daiEthLPOracle.nxt();     // Get queued value
-        assertEq(uint256(nxtVal), 0);                                // Verify oracle has no queued price
-        assertEq(uint256(nxtHas), 0);                                // Verify oracle has no queued price
+        (uint128 nxtVal, uint128 nxtHas) = seekableOracleDAI._nxt();  // Get queued value
+        assertEq(uint256(nxtVal), 0);                                 // Verify oracle has no queued price
+        assertEq(uint256(nxtHas), 0);                                 // Verify oracle has no queued price
 
-        assertEq(uint256(daiEthLPOracle.zzz()), 0);                  // Verify timestamp is 0
+        assertEq(uint256(seekableOracleDAI.zzz()), 0);                // Verify timestamp is 0
 
-        daiEthLPOracle.poke();                                       // Update oracle
+        seekableOracleDAI.poke();                                     // Update oracle
 
-        (curVal, curHas) = daiEthLPOracle.cur();                     // Get current value
-        assertEq(uint256(curVal), 0);                                // Verify oracle has no current value
-        assertEq(uint256(curHas), 0);                                // Verify oracle has no current value
+        (curVal, curHas) = seekableOracleDAI._cur();                  // Get current value
+        assertEq(uint256(curVal), 0);                                 // Verify oracle has no current value
+        assertEq(uint256(curHas), 0);                                 // Verify oracle has no current value
+daiEthLPOracledaiEthLPOracle
+        (nxtVal, nxtHas) = seekableOracleDAI._nxt();                  // Get queued value
+        assertTrue(nxtVal > 0);                                       // Verify oracle has non-zero queued value
+        assertEq(uint256(nxtHas), 1);                                 // Verify oracle has value
 
-        (nxtVal, nxtHas) = daiEthLPOracle.nxt();                     // Get queued value
-        assertTrue(nxtVal > 0);                                      // Verify oracle has non-zero queued value
-        assertEq(uint256(nxtHas), 1);                                // Verify oracle has value
-
-        assertTrue(daiEthLPOracle.zzz() > 0);                        // Verify timestamp is non-zero
+        assertTrue(seekableOracleDAI.zzz() > 0);                      // Verify timestamp is non-zero
     }
 
     function testFail_double_poke() public {
-        daiEthLPOracle.poke();                                       // Poke oracle
-        daiEthLPOracle.poke();                                       // Poke oracle again w/o hop time elapsed
+        daiEthLPOracle.poke();                                        // Poke oracle
+        daiEthLPOracle.poke();                                        // Poke oracle again w/o hop time elapsed
     }
 
     function test_double_poke() public {
-        daiEthLPOracle.poke();                                       // Poke oracle
-        (uint128 nxtVal, uint128 nxtHas) = daiEthLPOracle.nxt();     // Get queued oracle value
-        assertEq(uint(nxtHas), 1);                                   // Verify oracle has queued value
-        hevm.warp(add(daiEthLPOracle.zzz(), daiEthLPOracle.hop()));  // Time travel into the future
-        daiEthLPOracle.poke();                                       // Poke oracle again
-        (uint128 curVal, uint128 curHas) = daiEthLPOracle.cur();     // Get current oracle value
-        assertEq(uint(curHas), 1);                                   // Verify oracle has current value
-        assertEq(uint(curVal), uint(nxtVal));                        // Verify queued value became current value
-        (nxtVal, nxtHas) = daiEthLPOracle.nxt();                     // Get queued oracle value
-        assertEq(uint(nxtHas), 1);                                   // Verify oracle has queued value
-        assertTrue(nxtVal > 0);                                      // Verify queued oracle value
+        seekableOracleDAI.poke();                                     // Poke oracle
+        (uint128 nxtVal, uint128 nxtHas) = seekableOracleDAI._nxt();  // Get queued oracle value
+        assertEq(uint(nxtHas), 1);                                    // Verify oracle has queued value
+        hevm.warp(add(seekableOracleDAI.zzz(), seekableOracleDAI.hop()));  // Time travel into the future
+        seekableOracleDAI.poke();                                     // Poke oracle again
+        (uint128 curVal, uint128 curHas) = seekableOracleDAI._cur();  // Get current oracle value
+        assertEq(uint(curHas), 1);                                    // Verify oracle has current value
+        assertEq(uint(curVal), uint(nxtVal));                         // Verify queued value became current value
+        (nxtVal, nxtHas) = seekableOracleDAI._nxt();                  // Get queued oracle value
+        assertEq(uint(nxtHas), 1);                                    // Verify oracle has queued value
+        assertTrue(nxtVal > 0);                                       // Verify queued oracle value
     }
 
     function test_change() public {

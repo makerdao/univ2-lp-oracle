@@ -103,8 +103,8 @@ contract UNIV2LPOracle {
         uint128 has;  // Is price valid
     }
 
-    Feed    public cur;  // Current price  (mem slot 0x3)
-    Feed    public nxt;  // Queued price   (mem slot 0x4)
+    Feed    internal cur;  // Current price  (mem slot 0x3)
+    Feed    internal nxt;  // Queued price   (mem slot 0x4)
 
     // --- Stop ---
     uint256 public stopped;  // Stop/start ability to read
