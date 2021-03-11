@@ -170,7 +170,6 @@ contract UNIV2LPOracle {
         require(_orb0 != address(0) && _orb1 != address(0), "UNIV2LPOracle/invalid-oracle-address");
         wards[msg.sender] = 1;
         src  = _src;
-        zzz  = 0;
         wat  = _wat;
         normalizer0 = 10 ** sub(18, uint256(ERC20Like(UniswapV2PairLike(_src).token0()).decimals()));  // Calculate normalization factor of token0
         normalizer1 = 10 ** sub(18, uint256(ERC20Like(UniswapV2PairLike(_src).token1()).decimals()));  // Calculate normalization factor of token1
