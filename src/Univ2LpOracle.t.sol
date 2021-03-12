@@ -21,7 +21,7 @@ interface OSMLike {
 contract SeekableOracle is UNIV2LPOracle {
     constructor(address _src, bytes32 _wat, address _orb0, address _orb1) public UNIV2LPOracle(_src, _wat, _orb0, _orb1) {}
 
-    function _seek() public returns (uint128 quote, uint32 ts) {
+    function _seek() public returns (uint128 quote) {
         return seek();
     }
 
@@ -310,10 +310,9 @@ contract UNIV2LPOracleTest is DSTest {
 
     function test_seek_dai() public {
         uint256 preGas = gasleft();
-        (uint128 lpTokenPrice128, uint32 zzz) = seekableOracleDAI._seek();        // Get new dai-eth lp price from uniswap
+        uint128 lpTokenPrice128 = seekableOracleDAI._seek();        // Get new dai-eth lp price from uniswap
         uint256 postGas = gasleft();
         log_named_uint("dai seek gas", preGas - postGas);
-        assertTrue(zzz > uint32(0));                                              // Verify timestamp was set
         assertTrue(lpTokenPrice128 > 0);                                          // Verify price was set
         uint256 lpTokenPrice = uint256(lpTokenPrice128);
         uint256 expectedPrice =
@@ -329,16 +328,15 @@ contract UNIV2LPOracleTest is DSTest {
 
     function test_seek_wbtc() public {
         uint256 preGas = gasleft();
-        (uint128 lpTokenPrice128, uint32 zzz) = seekableOracleWBTC._seek();       // Get new wbtc-eth lp price from uniswap
+        uint128 lpTokenPrice128 = seekableOracleWBTC._seek();       // Get new wbtc-eth lp price from uniswap
         uint256 postGas = gasleft();
         log_named_uint("wbtc seek gas", preGas - postGas);
-        assertTrue(zzz > uint32(0));                                              // Verify timestamp was set
         assertTrue(lpTokenPrice128 > 0);                                          // Verify price was set
         uint256 lpTokenPrice = uint256(lpTokenPrice128);
         uint256 expectedPrice =
             add(mul(ethPrice,  IERC20(WETH).balanceOf(WBTC_ETH_UNI_POOL)),
                 mul(wbtcPrice, IERC20(WBTC).balanceOf(WBTC_ETH_UNI_POOL) * 10**10))
-            / IERC20(WBTC_ETH_UNI_POOL).totalSupply();                             // assumes protocol fee is 0
+            / IERC20(WBTC_ETH_UNI_POOL).totalSupply();                            // assumes protocol fee is 0
         uint256 diff =
             lpTokenPrice  > expectedPrice ?
             lpTokenPrice  - expectedPrice :
