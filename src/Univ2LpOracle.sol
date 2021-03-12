@@ -65,7 +65,7 @@ contract UNIV2LPOracleFactory {
 
     mapping(address => bool) public isOracle;
 
-    event Created(address sender, address orcl, bytes32 wat, address tok0, address tok1, address orb0, address orb1);
+    event NewUNIV2LPOracle(address sender, address orcl, bytes32 wat, address tok0, address tok1, address orb0, address orb1);
 
     // Create new Uniswap V2 LP Token Oracle instance
     function build(address _src, bytes32 _wat, address _orb0, address _orb1) public returns (address orcl) {
@@ -74,7 +74,7 @@ contract UNIV2LPOracleFactory {
         orcl = address(new UNIV2LPOracle(_src, _wat, _orb0, _orb1));
         UNIV2LPOracle(orcl).rely(msg.sender);
         isOracle[orcl] = true;
-        emit Created(msg.sender, orcl, _wat, tok0, tok1, _orb0, _orb1);
+        emit NewUNIV2LPOracle(msg.sender, orcl, _wat, tok0, tok1, _orb0, _orb1);
     }
 }
 
