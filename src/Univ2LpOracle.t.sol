@@ -25,11 +25,11 @@ contract SeekableOracle is UNIV2LPOracle {
         return seek();
     }
 
-    function _cur() public returns (uint128 val, uint128 has) {
+    function _cur() public view returns (uint128 val, uint128 has) {
         return (cur.val, cur.has);
     }
 
-    function _nxt() public returns (uint128 val, uint128 has) {
+    function _nxt() public view returns (uint128 val, uint128 has) {
         return (nxt.val, nxt.has);
     }
 }
