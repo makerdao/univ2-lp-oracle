@@ -448,7 +448,7 @@ contract UNIV2LPOracleTest is DSTest {
         (curVal, curHas) = seekableOracleDAI._cur();                  // Get current value
         assertEq(uint256(curVal), 0);                                 // Verify oracle has no current value
         assertEq(uint256(curHas), 0);                                 // Verify oracle has no current value
-daiEthLPOracledaiEthLPOracle
+
         (nxtVal, nxtHas) = seekableOracleDAI._nxt();                  // Get queued value
         assertTrue(nxtVal > 0);                                       // Verify oracle has non-zero queued value
         assertEq(uint256(nxtHas), 1);                                 // Verify oracle has value
