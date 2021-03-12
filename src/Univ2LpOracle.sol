@@ -251,10 +251,10 @@ contract UNIV2LPOracle {
 
     function poke() external stoppable {
         require(pass(), "UNIV2LPOracle/not-passed");
-        uint val = seek();
+        uint128 val = seek();
         require(val != 0, "UNIV2LPOracle/invalid-price");
         cur = nxt;
-        nxt = Feed(uint128(val), 1);
+        nxt = Feed(val, 1);
         zzz = uint64(block.timestamp);
         emit Value(cur.val, nxt.val);
     }
