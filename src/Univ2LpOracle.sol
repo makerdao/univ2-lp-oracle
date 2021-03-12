@@ -57,7 +57,6 @@ interface UniswapV2PairLike {
 
 interface OracleLike {
     function read() external view returns (uint256);
-    function peek() external view returns (uint256,bool);
 }
 
 // Factory for creating Uniswap V2 LP Token Oracle instances
