@@ -71,6 +71,32 @@ contract UNIV2LPOracleTest is DSTest {
         }
     }
 
+    // Alternate sqrt method
+    function sqrtu (uint256 x) private pure returns (uint128) {
+    if (x == 0) return 0;
+    else {
+      uint256 xx = x;
+      uint256 r = 1;
+      if (xx >= 0x100000000000000000000000000000000) { xx >>= 128; r <<= 64; }
+      if (xx >= 0x10000000000000000) { xx >>= 64; r <<= 32; }
+      if (xx >= 0x100000000) { xx >>= 32; r <<= 16; }
+      if (xx >= 0x10000) { xx >>= 16; r <<= 8; }
+      if (xx >= 0x100) { xx >>= 8; r <<= 4; }
+      if (xx >= 0x10) { xx >>= 4; r <<= 2; }
+      if (xx >= 0x8) { r <<= 1; }
+      r = (r + x / r) >> 1;
+      r = (r + x / r) >> 1;
+      r = (r + x / r) >> 1;
+      r = (r + x / r) >> 1;
+      r = (r + x / r) >> 1;
+      r = (r + x / r) >> 1;
+      r = (r + x / r) >> 1; // Seven iterations should be enough
+      uint256 r1 = x / r;
+      return uint128 (r < r1 ? r : r1);
+    }
+  }
+
+
     Hevm                 hevm;
     UNIV2LPOracleFactory factory;
     UNIV2LPOracle        daiEthLPOracle;
@@ -300,6 +326,48 @@ contract UNIV2LPOracleTest is DSTest {
     //                                                   //
     ///////////////////////////////////////////////////////
 
+
+
+
+    // Max integer that can be converted to a WAD
+    uint256 constant maxWADVal = ((2 ** 256 - 1) / WAD);
+
+    // Passed 10 rounds of fuzzing with 10,000 test cases
+    function test_compare_sqrt(uint256 exp) public {
+            // Convert to WAD since that is what we operate on
+            
+            if (exp < maxWADVal) {
+                exp = exp * WAD;
+            }
+            
+            uint256 preGas = gasleft();
+            uint256 rootVal = sqrt(exp);
+            uint256 postGas = gasleft();
+            uint256 preAltGas = gasleft();
+            uint256 rootAltVal = sqrtu(exp);
+            uint256 postAltGas = gasleft();
+            
+            uint babylGas = preGas - postGas;
+            uint altGas = preAltGas - postAltGas;
+     
+            // Just for convenience
+            log_named_uint("Babylonian sqrt gas usage: ", babylGas);
+            log_named_uint("ADVK sqrt gas usage: ", altGas);
+
+              
+        
+            // When input is 0, ADVK method costs 1 gas more than babylonian
+            assertTrue(altGas < babylGas || altGas - babylGas <= 1);
+
+           
+            // Use WADS here for the convenience of precision in cases where babyl % altGas != 0
+            // And to avoid div-by-zero when babylCost / ADVK method < 1 but > 0
+            assertTrue(wdiv(mul(babylGas, WAD), mul(altGas, WAD)) > mul(4, WAD) || exp == 0);
+
+            // Since we have confidence in Babylonian method, we simply check for equivalence
+            assertEq(rootVal, rootAltVal);
+    }
+
     function test_oracle_constructor() public {
         assertEq(daiEthLPOracle.src(), DAI_ETH_UNI_POOL);  // Verify source is DAI-ETH pool
         assertEq(daiEthLPOracle.orb0(), USDC_ORACLE);      // Verify token 0 oracle is USDC oracle
@@ -448,7 +516,7 @@ contract UNIV2LPOracleTest is DSTest {
         (curVal, curHas) = seekableOracleDAI._cur();                  // Get current value
         assertEq(uint256(curVal), 0);                                 // Verify oracle has no current value
         assertEq(uint256(curHas), 0);                                 // Verify oracle has no current value
-daiEthLPOracledaiEthLPOracle
+
         (nxtVal, nxtHas) = seekableOracleDAI._nxt();                  // Get queued value
         assertTrue(nxtVal > 0);                                       // Verify oracle has non-zero queued value
         assertEq(uint256(nxtHas), 1);                                 // Verify oracle has value
