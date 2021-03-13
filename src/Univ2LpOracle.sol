@@ -139,7 +139,7 @@ contract UNIV2LPOracle {
         z = add(mul(x, WAD), y / 2) / y;
     }
 
-    // FROM https://github.com/abdk-consulting/abdk-libraries-solidity/blob/master/ABDKMath64x64.sol#L687-L709
+    // FROM https://github.com/abdk-consulting/abdk-libraries-solidity/blob/16d7e1dd8628dfa2f88d5dadab731df7ada70bdd/ABDKMath64x64.sol#L687
     function sqrt (uint256 x) private pure returns (uint128) {
         if (x == 0) return 0;
         else {
@@ -162,7 +162,7 @@ contract UNIV2LPOracle {
             uint256 r1 = x / r;
             return uint128 (r < r1 ? r : r1);
         }
-  }
+    }
 
     // --- Events ---
     event Rely(address indexed usr);
