@@ -337,7 +337,7 @@ contract UNIV2LPOracleTest is DSTest {
             // Convert to WAD since that is what we operate on
             
             if (exp < maxWADVal) {
-                exp = exp * WAD;
+                exp = mul(exp, WAD);
             }
             
             uint256 preGas = gasleft();
@@ -361,7 +361,7 @@ contract UNIV2LPOracleTest is DSTest {
 
            
             // Use WADS here for the convenience of precision in cases where babyl % altGas != 0
-            // And to avoid div-by-zero when babylCost / ADVK method < 1 but > 0
+            // And to avoid div-by-zero when babylCost / ABDK method < 1 but > 0
             assertTrue(wdiv(mul(babylGas, WAD), mul(altGas, WAD)) > mul(4, WAD) || exp == 0);
 
             // Since we have confidence in Babylonian method, we simply check for equivalence
