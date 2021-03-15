@@ -215,14 +215,13 @@ contract UNIV2LPOracle {
         return block.timestamp >= add(zzz, hop);
     }
 
-    function seek() internal returns (uint128 quote, uint32 ts) {
+    function seek() internal returns (uint128 quote) {
         // Sync up reserves of uniswap liquidity pool
         UniswapV2PairLike(src).sync();
 
         // Get reserves of uniswap liquidity pool
-        (uint112 res0, uint112 res1, uint32 _ts) = UniswapV2PairLike(src).getReserves();
+        (uint112 res0, uint112 res1, uint32 ts) = UniswapV2PairLike(src).getReserves();
         require(res0 > 0 && res1 > 0, "UNIV2LPOracle/invalid-reserves");
-        ts = _ts;
         require(ts == block.timestamp);
 
         // Adjust reserves w/ respect to decimals
@@ -251,11 +250,11 @@ contract UNIV2LPOracle {
 
     function poke() external stoppable {
         require(pass(), "UNIV2LPOracle/not-passed");
-        (uint val, uint32 ts) = seek();
+        uint128 val = seek();
         require(val != 0, "UNIV2LPOracle/invalid-price");
         cur = nxt;
-        nxt = Feed(uint128(val), 1);
-        zzz = ts;
+        nxt = Feed(val, 1);
+        zzz = uint64(block.timestamp);
         emit Value(cur.val, nxt.val);
     }
 
