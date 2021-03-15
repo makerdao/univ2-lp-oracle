@@ -310,7 +310,7 @@ contract UNIV2LPOracleTest is DSTest {
 
     function test_seek_dai() public {
         uint256 preGas = gasleft();
-        uint128 lpTokenPrice128 = seekableOracleDAI._seek();        // Get new dai-eth lp price from uniswap
+        uint128 lpTokenPrice128 = seekableOracleDAI._seek();                      // Get new dai-eth lp price from uniswap
         uint256 postGas = gasleft();
         log_named_uint("dai seek gas", preGas - postGas);
         assertTrue(lpTokenPrice128 > 0);                                          // Verify price was set
@@ -328,7 +328,7 @@ contract UNIV2LPOracleTest is DSTest {
 
     function test_seek_wbtc() public {
         uint256 preGas = gasleft();
-        uint128 lpTokenPrice128 = seekableOracleWBTC._seek();       // Get new wbtc-eth lp price from uniswap
+        uint128 lpTokenPrice128 = seekableOracleWBTC._seek();                     // Get new wbtc-eth lp price from uniswap
         uint256 postGas = gasleft();
         log_named_uint("wbtc seek gas", preGas - postGas);
         assertTrue(lpTokenPrice128 > 0);                                          // Verify price was set
