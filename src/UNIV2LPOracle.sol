@@ -47,7 +47,7 @@
 //
 // (p_0 * r_0 + p_1 * r_1) / LP_supply = 2 * sqrt(k * p_0 * p_1) / LP_supply
 
-pragma solidity ^0.6.11;
+pragma solidity =0.6.12;
 
 interface ERC20Like {
     function decimals()         external view returns (uint8);
