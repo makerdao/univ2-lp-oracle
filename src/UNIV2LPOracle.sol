@@ -98,7 +98,7 @@ contract UNIV2LPOracle {
     address public immutable src;   // Price source
     uint16  public hop = 1 hours;   // Minimum time inbetween price updates
     uint64  public zzz;             // Time of last price update
-    bytes32 public immutable wat;   // Token whose price is being tracked
+    bytes32 public immutable wat;   // Symbol of token whose price is being tracked
 
     // --- Whitelisting ---
     mapping (address => uint256) public bud;
