@@ -208,6 +208,8 @@ contract UNIV2LPOracle {
             orb0 = orb;
         } else if (id == 1) {
             orb1 = orb;
+        } else {
+            revert("UNIV2LPOracle/invalid-id");
         }
         emit Link(id, orb);
     }
