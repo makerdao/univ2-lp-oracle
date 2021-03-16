@@ -88,7 +88,7 @@ contract UNIV2LPOracle {
         _;
     }
 
-    address public src;             // Price source
+    address public immutable src;   // Price source
     uint16  public hop = 1 hours;   // Minimum time inbetween price updates
     uint64  public zzz;             // Time of last price update
     bytes32 public immutable wat;   // Token whose price is being tracked
@@ -154,7 +154,6 @@ contract UNIV2LPOracle {
     // --- Events ---
     event Rely(address indexed usr);
     event Deny(address indexed usr);
-    event Change(address indexed src);
     event Step(uint256 hop);
     event Stop();
     event Start();
@@ -188,11 +187,6 @@ contract UNIV2LPOracle {
     function start() external auth {
         stopped = 0;
         emit Start();
-    }
-
-    function change(address _src) external auth {
-        src = _src;
-        emit Change(src);
     }
 
     function step(uint256 _hop) external auth {
