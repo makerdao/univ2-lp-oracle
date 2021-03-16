@@ -23,22 +23,29 @@
 //                                                   //
 ///////////////////////////////////////////////////////
 
-// INVARIANT k = reserve0 [num token0] * reserve1 [num token1]
+// Two-asset constant product pools, neglecting fees, satisfy (before and after trades):
 //
-// k = r_x * r_y
-// r_y = k / r_x
+// r_0 * r_1 = k                (1)
 //
-// 50-50 pools try to stay balanced in dollar terms
-// r_x * p_x = r_y * p_y    // Proportion of r_x and r_y can be manipulated so need to normalize them
+// where r_0 and r_1 are the reserves of the two tokens held by the pool.
+// The price of LP tokens (i.e. pool shares) needs to be evaluated based on 
+// reserve values r_0 and r_1 that cannot be arbitraged, i.e. values that
+// give the two halves of the pool equal economic value:
 //
-// r_x * p_x = p_y * (k / r_x)
-// r_x^2 = k * p_y / p_x
-// r_x = sqrt(k * p_y / p_x) & r_y = sqrt(k * p_x / p_y)
+// r_0 * p_0 = r_1 * p_1        (2)
+// 
+// (p_i is the price of pool asset i in some reference unit of account).
+// Using (1) and (2) we can compute the arbitrage-free reserve values in a manner
+// that depends only on k (which can be derived from the current reserve balances,
+// even if they are far from equilibrium) and market prices p_i obtained from a trusted source:
 //
-// Now that we've calculated normalized values of r_x and r_y that are not prone to manipulation by an attacker,
-// we can calculate the price of an lp token using the following formula.
+// r_0 = sqrt(k * p_1 / p_0)    (3)
+//   and
+// r_1 = sqrt(k * p_0 / p_1)    (4)
 //
-// p_lp = (r_x * p_x + r_y * p_y) / supply_lp = 2 * sqrt(k * p_x * p_y) / supply_lp
+// The value of an LP token is then, combining (3) and (4):
+//
+// (p_0 * r_0 + p_1 * r_1) / LP_supply = 2 * sqrt(k * p_0 * p_1) / LP_supply
 
 pragma solidity ^0.6.11;
 
