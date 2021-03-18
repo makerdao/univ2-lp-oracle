@@ -5,7 +5,7 @@ import "ds-test/test.sol";
 import "./test/IUniswapV2Router02.sol";
 import "./test/IERC20.sol";
 
-import "./Univ2LpOracle.sol";
+import "./UNIV2LPOracle.sol";
 
 interface Hevm {
     function warp(uint256) external;
