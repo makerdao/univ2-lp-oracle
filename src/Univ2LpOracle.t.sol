@@ -624,8 +624,13 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_link() public {
+        assertTrue(daiEthLPOracle.orb0() != TUSD_ORACLE);
         daiEthLPOracle.link(0, TUSD_ORACLE);                        // Replace DAI-ETH LP Oracle orb0 w/ TUSD Oracle
         assertEq(daiEthLPOracle.orb0(), TUSD_ORACLE);               // Verify that DAI-ETH LP Oracle orb0 is TUSD Oracle
+
+        assertTrue(daiEthLPOracle.orb1() != TUSD_ORACLE);
+        daiEthLPOracle.link(1, TUSD_ORACLE);                        // Replace DAI-ETH LP Oracle orb1 w/ TUSD Oracle
+        assertEq(daiEthLPOracle.orb1(), TUSD_ORACLE);               // Verify that DAI-ETH LP Oracle orb1 is TUSD Oracle
     }
 
     function test_link_poke() public {
@@ -639,8 +644,12 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(val1, val2);                                       // Verify queued prices are the same before and after Oracle swap
     }
 
-    function testFail_link() public {
+    function testFail_link_zero_addr() public {
         daiEthLPOracle.link(1, address(0));                         // Attempt to change DAI-ETH LP Oracle orb1 to 0 address
+    }
+
+    function testFail_link_bad_id() public {
+        daiEthLPOracle.link(2, TUSD_ORACLE);                        // The id parameter should be < 2
     }
 
     function test_eth_dai_price_change() public {
