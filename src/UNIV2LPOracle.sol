@@ -106,8 +106,12 @@ contract UNIV2LPOracle {
     }
 
     address public immutable src;   // Price source
-    uint16  public hop = 1 hours;   // Minimum time inbetween price updates
-    uint64  public zzz;             // Time of last price update
+
+    // hop and zph are packed into single slot to reduce SLOADs;
+    // this outweighs the cost from added bitmasking operations.
+    uint32  public hop = 1 hours;   // Minimum time in between price updates
+    uint224 public zph;             // Time of last price update plus hop
+
     bytes32 public immutable wat;   // Label of token whose price is being tracked
 
     // --- Whitelisting ---
@@ -201,7 +205,7 @@ contract UNIV2LPOracle {
         stopped = 1;
         delete cur;
         delete nxt;
-        zzz = 0;
+        zph = 0;
         emit Stop();
     }
 
@@ -211,8 +215,8 @@ contract UNIV2LPOracle {
     }
 
     function step(uint256 _hop) external auth {
-        require(_hop <= uint16(-1), "UNIV2LPOracle/invalid-hop");
-        hop = uint16(_hop);
+        require(_hop <= uint32(-1), "UNIV2LPOracle/invalid-hop");
+        hop = uint32(_hop);
         emit Step(hop);
     }
 
@@ -228,8 +232,19 @@ contract UNIV2LPOracle {
         emit Link(id, orb);
     }
 
-    function pass() public view returns (bool ok) {
-        return block.timestamp >= add(zzz, hop);
+    // For consistency with other oracles.
+    function zzz() external view returns (uint256) {
+        if (zph == 0) return 0;  // backwards compatibility
+        return sub(zph, hop);
+    }
+
+    function pass() external view returns (bool ok) {
+        // Avoid solc's wasteful bitmasking bureaucracy.
+        uint256 _zph;
+        assembly {
+            _zph := shr(32, sload(1))
+        }
+        return block.timestamp >= _zph;
     }
 
     function seek() internal returns (uint128 quote) {
@@ -260,13 +275,35 @@ contract UNIV2LPOracle {
     }
 
     function poke() external stoppable {
-        require(pass(), "UNIV2LPOracle/not-passed");
+        // Avoid solc's wasteful bitmasking bureaucracy and ensure a single sload.
+        uint256 _hop;
+        uint256 _zph;
+        assembly {
+            _zph := sload(1)
+            _hop := and(_zph, 0xffffffff)
+            _zph := shr(32, _zph)
+        }
+
+        // Equivalent to calling pass(); code has been duplicated to reduce gas costs.
+        require(block.timestamp >= _zph, "UNIV2LPOracle/not-passed");
+
         uint128 val = seek();
         require(val != 0, "UNIV2LPOracle/invalid-price");
-        cur = nxt;
+        Feed memory _cur = nxt;  // This local is used to save an SLOAD later.
+        cur = _cur;
         nxt = Feed(val, 1);
-        zzz = uint64(block.timestamp);
-        emit Value(cur.val, nxt.val);
+
+        // Even if _hop = (2^32 - 1), the maximum possible value, this will not overflow for
+        // many, many years.
+        _zph = block.timestamp + _hop;
+
+        // Just assigning to zph will do another SLOAD by default; avoid this.
+        assembly {
+            sstore(1, add(shl(32, _zph), _hop))
+        }
+
+        // Equivalent to emitting Value(cur.val, nxt.val), but averts two extra SLOADs.
+        emit Value(_cur.val, val);
     }
 
     function peek() external view toll returns (bytes32,bool) {
