@@ -186,8 +186,12 @@ contract UNIV2LPOracle {
         emit Rely(msg.sender);
         src  = _src;
         wat  = _wat;
-        normalizer0 = 10 ** sub(18, uint256(ERC20Like(UniswapV2PairLike(_src).token0()).decimals()));  // Calculate normalization factor of token0
-        normalizer1 = 10 ** sub(18, uint256(ERC20Like(UniswapV2PairLike(_src).token1()).decimals()));  // Calculate normalization factor of token1
+        uint256 dec0 = uint256(ERC20Like(UniswapV2PairLike(_src).token0()).decimals());
+        require(dec0 <= 18, "UNIV2LPOracle/token0-dec-gt-18");
+        normalizer0 = 10 ** (18 - dec0);  // Calculate normalization factor of token0
+        uint256 dec1 = uint256(ERC20Like(UniswapV2PairLike(_src).token1()).decimals());
+        require(dec1 <= 18, "UNIV2LPOracle/token1-dec-gt-18");
+        normalizer1 = 10 ** (18 - dec1);  // Calculate normalization factor of token1
         orb0 = _orb0;
         orb1 = _orb1;
     }
