@@ -331,7 +331,9 @@ contract UNIV2LPOracleTest is DSTest {
 
     // Passed 10 rounds of fuzzing with 10,000 test cases
     function test_compare_sqrt(uint256 exp) public {
-            // Convert to WAD since that is what we operate on
+        if (exp == 0 ) return;
+
+        // Convert to WAD since that is what we operate on
         if (exp < MAX_WAD_VAL) {
             exp = mul(exp, WAD);
         }
