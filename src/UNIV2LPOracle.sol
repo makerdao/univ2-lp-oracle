@@ -109,7 +109,8 @@ contract UNIV2LPOracle {
 
     // hop and zph are packed into single slot to reduce SLOADs;
     // this outweighs the cost from added bitmasking operations.
-    uint32  public hop = 1 hours;   // Minimum time in between price updates
+    uint16  public stopped;         // Stop/start ability to update
+    uint16  public hop = 1 hours;   // Minimum time in between price updates
     uint224 public zph;             // Time of last price update plus hop
 
     bytes32 public immutable wat;   // Label of token whose price is being tracked
@@ -125,10 +126,6 @@ contract UNIV2LPOracle {
 
     Feed    internal cur;  // Current price  (mem slot 0x3)
     Feed    internal nxt;  // Queued price   (mem slot 0x4)
-
-    // --- Stop ---
-    uint256 public stopped;  // Stop/start ability to read
-    modifier stoppable { require(stopped == 0, "UNIV2LPOracle/is-stopped"); _; }
 
     // --- Data ---
     uint256 private immutable UNIT_0;  // Numerical representation of one token of token0 (10^decimals) 
@@ -215,8 +212,8 @@ contract UNIV2LPOracle {
     }
 
     function step(uint256 _hop) external auth {
-        require(_hop <= uint32(-1), "UNIV2LPOracle/invalid-hop");
-        hop = uint32(_hop);
+        require(_hop <= uint16(-1), "UNIV2LPOracle/invalid-hop");
+        hop = uint16(_hop);
         emit Step(hop);
     }
 
@@ -274,15 +271,20 @@ contract UNIV2LPOracle {
         quote = uint128(preq);  // WAD
     }
 
-    function poke() external stoppable {
+    function poke() external {
         // Avoid solc's wasteful bitmasking bureaucracy and ensure a single sload.
+        uint256 _stopped;
         uint256 _hop;
         uint256 _zph;
         assembly {
-            _zph := sload(1)
-            _hop := and(_zph, 0xffffffff)
-            _zph := shr(32, _zph)
+            _zph     := sload(1)
+            _stopped := and(_zph,          0xffff)
+            _hop     := and(shr(16, _zph), 0xffff)
+            _zph     := shr(32, _zph)
         }
+
+        // When stopped, values are set to zero and should remain such; thus, disallow updating in that case.
+        require(_stopped == 0, "UNIV2LPOracle/is-stopped");
 
         // Equivalent to calling pass(); code has been duplicated to reduce gas costs.
         require(block.timestamp >= _zph, "UNIV2LPOracle/not-passed");
@@ -293,13 +295,14 @@ contract UNIV2LPOracle {
         cur = _cur;
         nxt = Feed(val, 1);
 
-        // Even if _hop = (2^32 - 1), the maximum possible value, this will not overflow for
+        // Even if _hop = (2^16 - 1), the maximum possible value, this will not overflow for
         // many, many years.
         _zph = block.timestamp + _hop;
 
         // Just assigning to zph will do another SLOAD by default; avoid this.
         assembly {
-            sstore(1, add(shl(32, _zph), _hop))
+            // We know stopped was zero, so no need to account for it explicitly here.
+            sstore(1, add(shl(32, _zph), shl(16, _hop)))
         }
 
         // Equivalent to emitting Value(cur.val, nxt.val), but averts two extra SLOADs.

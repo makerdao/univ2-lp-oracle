@@ -289,7 +289,7 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(oracle.src(), DAI_ETH_UNI_POOL);           // Verify uni pool is source
         assertEq(oracle.orb0(), WBTC_ORACLE);               // Verify oracle configured correctly
         assertEq(oracle.orb1(), ETH_ORACLE);                // Verify oracle configured correctly
-        assertEq(oracle.stopped(), 0);                      // Verify contract is active
+        assertEq(uint256(oracle.stopped()), 0);             // Verify contract is active
         assertTrue(factory.isOracle(address(oracle)));      // Verify factory recorded oracle
     }
 
@@ -368,7 +368,7 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(daiEthLPOracle.orb0(), USDC_ORACLE);      // Verify token 0 oracle is USDC oracle
         assertEq(daiEthLPOracle.orb1(), ETH_ORACLE);       // Verify token 1 oracle is ETH oracle
         assertEq(daiEthLPOracle.wards(address(this)), 1);  // Verify owner
-        assertEq(daiEthLPOracle.stopped(), 0);             // Verify contract active
+        assertEq(uint256(daiEthLPOracle.stopped()), 0);    // Verify contract active
     }
 
     function test_seek_dai() public {
