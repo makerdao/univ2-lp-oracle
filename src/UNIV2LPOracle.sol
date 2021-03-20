@@ -235,13 +235,29 @@ contract UNIV2LPOracle {
         return sub(zph, hop);
     }
 
-    function pass() external view returns (bool ok) {
-        // Avoid solc's wasteful bitmasking bureaucracy.
-        uint256 _zph;
+    function pass() external view returns (bool /*ok*/) {
+
+        // The below is equivalent to:
+        //
+        //     return block.timestamp >= zph;
+        //
+        // since "x >= y" is equivalent to "!(y < x)".
+        //
+        // Stomping on memory slot zero is safe since
+        //   1) we return immediately,
+        //   2) EVM memory is call-local, and
+        //   3) pass() is an external function.
         assembly {
-            _zph := shr(32, sload(1))
+            let ok :=
+                iszero(
+                    lt(
+                        timestamp(),
+                        shr(32, sload(1))  // zph
+                    )
+                )
+            mstore(0, ok)
+            return(0, 0x20)
         }
-        return block.timestamp >= _zph;
     }
 
     function seek() internal returns (uint128 quote) {
