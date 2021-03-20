@@ -272,7 +272,8 @@ contract UNIV2LPOracle {
     }
 
     function poke() external {
-        // Avoid solc's wasteful bitmasking bureaucracy and ensure a single sload.
+
+        // Ensure a single SLOAD while avoiding solc's excessive bitmasking bureaucracy.
         uint256 _stopped;
         uint256 _hop;
         uint256 _zph;
@@ -291,18 +292,21 @@ contract UNIV2LPOracle {
 
         uint128 val = seek();
         require(val != 0, "UNIV2LPOracle/invalid-price");
-        Feed memory _cur = nxt;  // This local is used to save an SLOAD later.
+        Feed memory _cur = nxt;  // This memory value is used to save an SLOAD later.
         cur = _cur;
         nxt = Feed(val, 1);
 
-        // Even if _hop = (2^16 - 1), the maximum possible value, this will not overflow
-        // (even a 224 bit value) for a very long time.
-        _zph = block.timestamp + _hop;
-
         // Just assigning to zph will do another SLOAD by default; avoid this.
         assembly {
-            // We know stopped was zero, so no need to account for it explicitly here.
-            sstore(1, add(shl(32, _zph), shl(16, _hop)))
+
+            // The below is equivalent to:
+            //    zph = block.timestamp + hop
+            //
+            // Even if _hop = (2^16 - 1), the maximum possible value, add(timestamp(), _hop)
+            // will not overflow (even a 224 bit value) for a very long time.
+            //
+            // Also, we know stopped was zero, so ther is no need to account for it explicitly here.
+            sstore(1, add(shl(32, add(timestamp(), _hop)), shl(16, _hop)))
         }
 
         // Equivalent to emitting Value(cur.val, nxt.val), but averts two extra SLOADs.
