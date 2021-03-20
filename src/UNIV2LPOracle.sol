@@ -71,7 +71,7 @@ contract UNIV2LPOracleFactory {
 
     mapping(address => bool) public isOracle;
 
-    event NewUNIV2LPOracle(address sender, address orcl, bytes32 wat, address tok0, address tok1, address orb0, address orb1);
+    event NewUNIV2LPOracle(address sender, address orcl, bytes32 wat, address indexed tok0, address indexed tok1, address orb0, address orb1);
 
     // Create new Uniswap V2 LP Token Oracle instance
     function build(address _src, bytes32 _wat, address _orb0, address _orb1) public returns (address orcl) {
