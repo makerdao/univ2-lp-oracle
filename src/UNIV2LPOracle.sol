@@ -307,23 +307,23 @@ contract UNIV2LPOracle {
         // code has been duplicated to reduce gas costs.
         require(block.timestamp >= _zph, "UNIV2LPOracle/not-passed");
 
-        uint128 val = seek();
-        require(val != 0, "UNIV2LPOracle/invalid-price");
+        uint128 _val = seek();
+        require(_val != 0, "UNIV2LPOracle/invalid-price");
         Feed memory _cur = nxt;  // This memory value is used to save an SLOAD later.
         cur = _cur;
-        nxt = Feed(val, 1);
+        nxt = Feed(_val, 1);
 
-        // Just assigning to zph will do another SLOAD by default; avoid this.
+        // The below is equivalent to:
+        //
+        //    zph = block.timestamp + hop
+        //
+        // but ensures no extra SLOADs are performed.
+        //
+        // Even if _hop = (2^16 - 1), the maximum possible value, add(timestamp(), _hop)
+        // will not overflow (even a 224 bit value) for a very long time.
+        //
+        // Also, we know stopped was zero, so ther is no need to account for it explicitly here.
         assembly {
-
-            // The below is equivalent to:
-            //
-            //    zph = block.timestamp + hop
-            //
-            // Even if _hop = (2^16 - 1), the maximum possible value, add(timestamp(), _hop)
-            // will not overflow (even a 224 bit value) for a very long time.
-            //
-            // Also, we know stopped was zero, so ther is no need to account for it explicitly here.
             sstore(
                 1,
                 add(
@@ -340,7 +340,7 @@ contract UNIV2LPOracle {
         }
 
         // Equivalent to emitting Value(cur.val, nxt.val), but averts two extra SLOADs.
-        emit Value(_cur.val, val);
+        emit Value(_cur.val, _val);
     }
 
     function peek() external view toll returns (bytes32,bool) {
