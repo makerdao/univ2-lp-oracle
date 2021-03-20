@@ -295,8 +295,8 @@ contract UNIV2LPOracle {
         cur = _cur;
         nxt = Feed(val, 1);
 
-        // Even if _hop = (2^16 - 1), the maximum possible value, this will not overflow for
-        // many, many years.
+        // Even if _hop = (2^16 - 1), the maximum possible value, this will not overflow
+        // (even a 224 bit value) for a very long time.
         _zph = block.timestamp + _hop;
 
         // Just assigning to zph will do another SLOAD by default; avoid this.
