@@ -555,7 +555,7 @@ contract UNIV2LPOracleTest is DSTest {
     // to be maximally gas-optimized.
     function test_gas_pass_poke() public {
         uint256 preGas;
-        uint256 postGas;
+        uint256 diffGas;
 
         require(daiEthLPOracle.pass());
 
@@ -563,8 +563,9 @@ contract UNIV2LPOracleTest is DSTest {
         if (daiEthLPOracle.pass()) {
             daiEthLPOracle.poke();
         }
-        postGas = gasleft();
-        log_named_uint("pass+poke gas", preGas - postGas);
+        diffGas = preGas - gasleft();
+        assertTrue(diffGas <= 88428);  // Will need updated for the Berlin hardfork
+        log_named_uint("pass+poke gas", diffGas);
 
         require(!daiEthLPOracle.pass());
 
@@ -572,8 +573,9 @@ contract UNIV2LPOracleTest is DSTest {
         if (daiEthLPOracle.pass()) {
             daiEthLPOracle.poke();
         }
-        postGas = gasleft();
-        log_named_uint("pass-only gas", preGas - postGas);
+        diffGas = preGas - gasleft();
+        assertTrue(diffGas <= 3465);  // Will need updated for the Berlin hardfork
+        log_named_uint("pass-only gas", diffGas);
     }
 
     function testFail_whitelist_peep() public {
