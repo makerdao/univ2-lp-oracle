@@ -317,13 +317,26 @@ contract UNIV2LPOracle {
         assembly {
 
             // The below is equivalent to:
+            //
             //    zph = block.timestamp + hop
             //
             // Even if _hop = (2^16 - 1), the maximum possible value, add(timestamp(), _hop)
             // will not overflow (even a 224 bit value) for a very long time.
             //
             // Also, we know stopped was zero, so ther is no need to account for it explicitly here.
-            sstore(1, add(shl(32, add(timestamp(), _hop)), shl(16, _hop)))
+            sstore(
+                1,
+                add(
+                    shl(                          // zph value starts 32 bits in
+                        32,
+                        add(timestamp(), _hop)
+                    ),
+                    shl(                          // hop value starts 16 bits in
+                        16,
+                        _hop
+                    )
+                )
+            )
         }
 
         // Equivalent to emitting Value(cur.val, nxt.val), but averts two extra SLOADs.
