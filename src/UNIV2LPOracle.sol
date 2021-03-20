@@ -241,7 +241,7 @@ contract UNIV2LPOracle {
         //
         //     return block.timestamp >= zph;
         //
-        // since "x >= y" is equivalent to "!(y < x)".
+        // since "x >= y" is equivalent to "!(x < y)".
         //
         // Stomping on memory slot zero is safe since
         //   1) we return immediately,
