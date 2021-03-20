@@ -303,7 +303,8 @@ contract UNIV2LPOracle {
         // When stopped, values are set to zero and should remain such; thus, disallow updating in that case.
         require(_stopped == 0, "UNIV2LPOracle/is-stopped");
 
-        // Equivalent to calling pass(); code has been duplicated to reduce gas costs.
+        // Equivalent to requiring that pass() returns true;
+        // code has been duplicated to reduce gas costs.
         require(block.timestamp >= _zph, "UNIV2LPOracle/not-passed");
 
         uint128 val = seek();
