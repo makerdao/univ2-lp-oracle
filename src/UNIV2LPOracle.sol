@@ -290,18 +290,20 @@ contract UNIV2LPOracle {
     function poke() external {
 
         // Ensure a single SLOAD while avoiding solc's excessive bitmasking bureaucracy.
-        uint256 _stopped;
-        uint256 _hop;
         uint256 _zph;
-        assembly {
-            _zph     := sload(1)
-            _stopped := and(_zph,          0xffff)
-            _hop     := and(shr(16, _zph), 0xffff)
-            _zph     := shr(32, _zph)
-        }
+        uint256 _hop;
+        {
+            uint256 _stopped;  // block-scoping _stopped here saves a little gas
+            assembly {
+                _zph     := sload(1)
+                _stopped := and(_zph,          0xffff)
+                _hop     := and(shr(16, _zph), 0xffff)
+                _zph     := shr(32, _zph)
+            }
 
-        // When stopped, values are set to zero and should remain such; thus, disallow updating in that case.
-        require(_stopped == 0, "UNIV2LPOracle/is-stopped");
+            // When stopped, values are set to zero and should remain such; thus, disallow updating in that case.
+            require(_stopped == 0, "UNIV2LPOracle/is-stopped");
+        }
 
         // Equivalent to requiring that pass() returns true;
         // code has been duplicated to reduce gas costs.
