@@ -8,7 +8,10 @@ make build
 export DAPP_TEST_TIMESTAMP=$(seth block latest timestamp)
 export DAPP_TEST_NUMBER=$(seth block latest number)
 
-LANG=C.UTF-8 hevm dapp-test --rpc="$ETH_RPC_URL" --json-file=out/dapp.sol.json --dapp-root=. --verbose 1
-
-# Will print the gas cost of the pass-poke hot path; useful when optimizing.
-# LANG=C.UTF-8 hevm dapp-test --rpc="$ETH_RPC_URL" --json-file=out/dapp.sol.json --dapp-root=. --verbose 2 --match test_gas_pass_poke
+if [[ -z "$1" ]]; then
+  LANG=C.UTF-8 hevm dapp-test --rpc="$ETH_RPC_URL" --json-file=out/dapp.sol.json --dapp-root=. --verbose 1
+else
+  # If running with make test, one can trigger this logic via:
+  # $ MATCH=some_string_to_match make test
+  LANG=C.UTF-8 hevm dapp-test --rpc="$ETH_RPC_URL" --json-file=out/dapp.sol.json --dapp-root=. --verbose 2 --match "$1"
+fi
