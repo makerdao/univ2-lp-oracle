@@ -214,7 +214,7 @@ contract UNIV2LPOracle {
     function step(uint256 _hop) external auth {
         require(_hop <= uint24(-1), "UNIV2LPOracle/invalid-hop");
         hop = uint24(_hop);
-        emit Step(hop);
+        emit Step(_hop);
     }
 
     function link(uint256 id, address orb) external auth {
