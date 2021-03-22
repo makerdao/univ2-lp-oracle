@@ -297,10 +297,10 @@ contract UNIV2LPOracle {
         {
             uint256 _stopped;  // block-scoping _stopped here saves a little gas
             assembly {
-                _zph     := sload(1)
-                _stopped := and(_zph,         0xff    )
-                _hop     := and(shr(8, _zph), 0xffffff)
-                _zph     := shr(32, _zph)
+                let _slot1 := sload(1)
+                _stopped   := and(_slot1,         0xff    )
+                _hop       := and(shr(8, _slot1), 0xffffff)
+                _zph       := shr(32, _slot1)
             }
 
             // When stopped, values are set to zero and should remain such; thus, disallow updating in that case.
