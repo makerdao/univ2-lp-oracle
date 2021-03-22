@@ -247,6 +247,8 @@ contract UNIV2LPOracle {
         //   1) we return immediately,
         //   2) EVM memory is call-local, and
         //   3) pass() is an external function.
+        //
+        // Returning immediately is fine since there are no postfix modifiers to execute.
         assembly {
             let ok :=
                 iszero(
@@ -343,6 +345,11 @@ contract UNIV2LPOracle {
 
         // Equivalent to emitting Value(cur.val, nxt.val), but averts two extra SLOADs.
         emit Value(_cur.val, _val);
+
+        // Safe to terminate immediately since no postfix modifiers are applied.
+        assembly {
+            stop()
+        }
     }
 
     function peek() external view toll returns (bytes32,bool) {
