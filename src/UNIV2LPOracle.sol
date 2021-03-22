@@ -307,8 +307,9 @@ contract UNIV2LPOracle {
             require(_stopped == 0, "UNIV2LPOracle/is-stopped");
         }
 
-        // Equivalent to requiring that pass() returns true;
-        // code has been duplicated to reduce gas costs.
+        // Equivalent to requiring that pass() returns true.
+        // The logic is repeated instead of calling pass() to save gas
+        // (both by eliminating an internal call here, and allowing pass to be external).
         require(block.timestamp >= _zph, "UNIV2LPOracle/not-passed");
 
         uint128 _val = seek();
