@@ -243,7 +243,7 @@ contract UNIV2LPOracle {
         //
         // since "x >= y" is equivalent to "!(x < y)".
         //
-        // Stomping on memory slot zero is safe since
+        // Overwriting memory slot zero is safe since
         //   1) we return immediately,
         //   2) EVM memory is call-local, and
         //   3) pass() is an external function.
