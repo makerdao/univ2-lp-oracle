@@ -109,8 +109,8 @@ contract UNIV2LPOracle {
 
     // hop and zph are packed into single slot to reduce SLOADs;
     // this outweighs the cost from added bitmasking operations.
-    uint16  public stopped;         // Stop/start ability to update
-    uint16  public hop = 1 hours;   // Minimum time in between price updates
+    uint8   public stopped;         // Stop/start ability to update
+    uint24  public hop = 1 hours;   // Minimum time in between price updates
     uint224 public zph;             // Time of last price update plus hop
 
     bytes32 public immutable wat;   // Label of token whose price is being tracked
@@ -212,8 +212,8 @@ contract UNIV2LPOracle {
     }
 
     function step(uint256 _hop) external auth {
-        require(_hop <= uint16(-1), "UNIV2LPOracle/invalid-hop");
-        hop = uint16(_hop);
+        require(_hop <= uint24(-1), "UNIV2LPOracle/invalid-hop");
+        hop = uint24(_hop);
         emit Step(hop);
     }
 
@@ -296,8 +296,8 @@ contract UNIV2LPOracle {
             uint256 _stopped;  // block-scoping _stopped here saves a little gas
             assembly {
                 _zph     := sload(1)
-                _stopped := and(_zph,          0xffff)
-                _hop     := and(shr(16, _zph), 0xffff)
+                _stopped := and(_zph,         0xff    )
+                _hop     := and(shr(8, _zph), 0xffffff)
                 _zph     := shr(32, _zph)
             }
 
@@ -321,7 +321,7 @@ contract UNIV2LPOracle {
         //
         // but ensures no extra SLOADs are performed.
         //
-        // Even if _hop = (2^16 - 1), the maximum possible value, add(timestamp(), _hop)
+        // Even if _hop = (2^24 - 1), the maximum possible value, add(timestamp(), _hop)
         // will not overflow (even a 224 bit value) for a very long time.
         //
         // Also, we know stopped was zero, so there is no need to account for it explicitly here.
@@ -333,8 +333,8 @@ contract UNIV2LPOracle {
                         32,
                         add(timestamp(), _hop)
                     ),
-                    shl(                          // hop value starts 16 bits in
-                        16,
+                    shl(                          // hop value starts 8 bits in
+                        8,
                         _hop
                     )
                 )
