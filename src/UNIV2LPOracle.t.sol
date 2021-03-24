@@ -559,22 +559,25 @@ contract UNIV2LPOracleTest is DSTest {
 
         require(daiEthLPOracle.pass());
 
+        // Run the affected parts of the common
+        //   if (orcl.pass()) orcl.poke();
+        // pattern for the case pass() returns true.
         preGas = gasleft();
-        if (daiEthLPOracle.pass()) {
-            daiEthLPOracle.poke();
-        }
+        daiEthLPOracle.pass();
+        daiEthLPOracle.poke();
         diffGas = preGas - gasleft();
-        assertTrue(diffGas <= 88408);  // Will need to be updated for the Berlin hardfork.
+        assertTrue(diffGas <= 88375);  // Will need to be updated for the Berlin hardfork.
         log_named_uint("pass+poke gas", diffGas);
 
         require(!daiEthLPOracle.pass());
 
+        // Run the affected parts of the common
+        //   if (orcl.pass()) orcl.poke();
+        // pattern for the case pass() returns false.
         preGas = gasleft();
-        if (daiEthLPOracle.pass()) {
-            daiEthLPOracle.poke();
-        }
+        daiEthLPOracle.pass();
         diffGas = preGas - gasleft();
-        assertTrue(diffGas <= 3465);  // Will need to be updated for the Berlin hardfork.
+        assertTrue(diffGas <= 3447);  // Will need to be updated for the Berlin hardfork.
         log_named_uint("pass-only gas", diffGas);
     }
 
