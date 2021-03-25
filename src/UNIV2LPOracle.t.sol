@@ -365,7 +365,7 @@ contract UNIV2LPOracleTest is DSTest {
 
 
 
-    uint112 max112 = 5192296858534827628530496329220095;
+    uint112 max112 = type(uint112).max;
 
     function test_seek_equivalence(
         uint8 decimals0,
@@ -387,45 +387,40 @@ contract UNIV2LPOracleTest is DSTest {
         if (res1 < 1) {
             return;
         }
-        log_named_uint("dec0", dec0);
-        log_named_uint("dec1", dec1);
-        log_named_uint("decimals0", decimals0);
-        log_named_uint("decimals1", decimals1);
-
+        // Save these for later
         uint112 res00 = res0;
         uint112 res11 = res1;
+
+
+        // Old method of calculating k uniswap invariant
         uint256 preGas = gasleft();
 
         uint256 normalizer0 = 10**(18 - dec0);
         uint256 normalizer1 = 10**(18 - dec1);
-        // log_named_uint("Normalizer 0", normalizer0);
-        // log_named_uint("Normalizer 1", normalizer1);
-
-        // log_named_uint("res0 uncasted", mul(res0, normalizer0));
-        // log_named_uint("max1 112 fill", max112);
-        // log_named_uint("res1 uncasted", mul(res1, normalizer1));
-        uint256 res0 = uint256(res0);
-        uint256 res1 = uint256(res1);
-        if (normalizer0 > 1) res0 = mul(res0, normalizer0);
-        if (normalizer1 > 1) res1 = mul(res1, normalizer1);
-
+   
+        uint256 res0 = mul(uint256(res0), normalizer0);
+        uint256 res1 = mul(uint256(res1), normalizer1);
+        
         uint256 k = mul(res0, res1);
-
         uint256 postGas = gasleft();
 
-        log_named_uint("res0", res0);
-        log_named_uint("res1", res1);
 
         uint256 gasUse1 = preGas - postGas;
+
+        // New method of calculating k uniswap invaiant.. store normalizers product
+        // prior to seek invocation
         uint256 normalize_product = mul(normalizer0, normalizer1);
         uint256 preGas2 = gasleft();
-
         uint256 k_alt =
             mul(normalize_product, mul(uint256(res00), uint256(res11)));
         uint256 postGas2 = gasleft();
         uint256 gasUse2 = preGas2 - postGas2;
+
+
         log_named_uint("K", k);
         log_named_uint("K_ALT", k_alt);
+
+        // Check equivalence of two calculations
         assertEq(k, k_alt);
         assertTrue(gasUse2 < gasUse1);
     }
