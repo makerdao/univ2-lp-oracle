@@ -396,17 +396,18 @@ contract UNIV2LPOracleTest is DSTest {
         uint112 res11 = res1;
         uint256 preGas = gasleft();
 
-        uint256 normalizer0 = 10**(18 - normalization1);
-        uint256 normalizer1 = 10**(18 - normalization0);
+        uint256 normalizer0 = 10**(18 - dec0);
+        uint256 normalizer1 = 10**(18 - dec1);
         // log_named_uint("Normalizer 0", normalizer0);
         // log_named_uint("Normalizer 1", normalizer1);
 
         // log_named_uint("res0 uncasted", mul(res0, normalizer0));
         // log_named_uint("max1 112 fill", max112);
         // log_named_uint("res1 uncasted", mul(res1, normalizer1));
-
-        uint256 res0 = mul(res0, normalizer0);
-        uint256 res1 = mul(res1, normalizer1);
+        uint256 res0 = uint256(res0);
+        uint256 res1 = uint256(res1);
+        if (dec0 > 1) res0 = mul(res0, dec0);
+        if (dec1 > 1) res1 = mul(res1, dec1);
 
         uint256 k = mul(res0, res1);
 
@@ -416,7 +417,7 @@ contract UNIV2LPOracleTest is DSTest {
         log_named_uint("res1", res1);
 
         uint256 gasUse1 = preGas - postGas;
-        uint256 normalize_product = mul(normalizer0, normalizer1);
+        uint256 normalize_product = mul(dec0, dec1);
         uint256 preGas2 = gasleft();
 
         uint256 k_alt =
