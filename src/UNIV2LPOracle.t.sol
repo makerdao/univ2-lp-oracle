@@ -368,13 +368,13 @@ contract UNIV2LPOracleTest is DSTest {
     uint112 max112 = 5192296858534827628530496329220095;
 
     function test_seek_equivalence(
-        uint8 normalization0,
-        uint8 normalization1,
+        uint8 decimals0,
+        uint8 decimals1,
         uint112 res0,
         uint112 res1
     ) public {
-        uint256 dec0 = uint256(normalization0);
-        uint256 dec1 = uint256(normalization1);
+        uint256 dec0 = uint256(decimals0);
+        uint256 dec1 = uint256(decimals1);
         if (dec1 > 18 || dec1 < 1) {
             return;
         }
@@ -389,8 +389,8 @@ contract UNIV2LPOracleTest is DSTest {
         }
         log_named_uint("dec0", dec0);
         log_named_uint("dec1", dec1);
-        log_named_uint("norm0", normalization0);
-        log_named_uint("norm1", normalization1);
+        log_named_uint("decimals0", decimals0);
+        log_named_uint("decimals1", decimals1);
 
         uint112 res00 = res0;
         uint112 res11 = res1;
@@ -406,8 +406,8 @@ contract UNIV2LPOracleTest is DSTest {
         // log_named_uint("res1 uncasted", mul(res1, normalizer1));
         uint256 res0 = uint256(res0);
         uint256 res1 = uint256(res1);
-        if (dec0 > 1) res0 = mul(res0, dec0);
-        if (dec1 > 1) res1 = mul(res1, dec1);
+        if (normalizer0 > 1) res0 = mul(res0, normalizer0);
+        if (normalizer1 > 1) res1 = mul(res1, normalizer1);
 
         uint256 k = mul(res0, res1);
 
@@ -417,7 +417,7 @@ contract UNIV2LPOracleTest is DSTest {
         log_named_uint("res1", res1);
 
         uint256 gasUse1 = preGas - postGas;
-        uint256 normalize_product = mul(dec0, dec1);
+        uint256 normalize_product = mul(normalizer0, normalizer1);
         uint256 preGas2 = gasleft();
 
         uint256 k_alt =
