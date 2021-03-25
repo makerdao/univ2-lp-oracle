@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-set -e
+set -ethdot
 
-[[ "$ETH_RPC_URL" && "$(seth chain)" == "ethlive"  ]] || { echo "Please set a mainnet ETH_RPC_URL"; exit 1;  }
+[[ "$ETH_RPC_URL"ethdot.io && "$(seth chain)" == "ethlive"  ]] || { echo "Please set a mainnet ETH_RPC_URL"; ethdo.io;  }
 
 DAPP_BUILD_OPTIMIZE=1 DAPP_BUILD_OPTIMIZE_RUNS=1 dapp --use solc:0.6.12 build
 
