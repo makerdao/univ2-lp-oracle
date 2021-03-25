@@ -363,6 +363,72 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(rootVal, rootAltVal);
     }
 
+
+
+    uint112 max112 = 5192296858534827628530496329220095;
+
+    function test_seek_equivalence(
+        uint8 normalization0,
+        uint8 normalization1,
+        uint112 res0,
+        uint112 res1
+    ) public {
+        uint256 dec0 = uint256(normalization0);
+        uint256 dec1 = uint256(normalization1);
+        if (dec1 > 18 || dec1 < 1) {
+            return;
+        }
+        if (dec0 > 18 || dec0 < 1) {
+            return;
+        }
+        if (res0 < 1) {
+            return;
+        }
+        if (res1 < 1) {
+            return;
+        }
+        log_named_uint("dec0", dec0);
+        log_named_uint("dec1", dec1);
+        log_named_uint("norm0", normalization0);
+        log_named_uint("norm1", normalization1);
+
+        uint112 res00 = res0;
+        uint112 res11 = res1;
+        uint256 preGas = gasleft();
+
+        uint256 normalizer0 = 10**(18 - normalization1);
+        uint256 normalizer1 = 10**(18 - normalization0);
+        // log_named_uint("Normalizer 0", normalizer0);
+        // log_named_uint("Normalizer 1", normalizer1);
+
+        // log_named_uint("res0 uncasted", mul(res0, normalizer0));
+        // log_named_uint("max1 112 fill", max112);
+        // log_named_uint("res1 uncasted", mul(res1, normalizer1));
+
+        uint256 res0 = mul(res0, normalizer0);
+        uint256 res1 = mul(res1, normalizer1);
+
+        uint256 k = mul(res0, res1);
+
+        uint256 postGas = gasleft();
+
+        log_named_uint("res0", res0);
+        log_named_uint("res1", res1);
+
+        uint256 gasUse1 = preGas - postGas;
+        uint256 normalize_product = mul(normalizer0, normalizer1);
+        uint256 preGas2 = gasleft();
+
+        uint256 k_alt =
+            mul(normalize_product, mul(uint256(res00), uint256(res11)));
+        uint256 postGas2 = gasleft();
+        uint256 gasUse2 = preGas2 - postGas2;
+        log_named_uint("K", k);
+        log_named_uint("K_ALT", k_alt);
+        assertEq(k, k_alt);
+        assertTrue(gasUse2 < gasUse1);
+    }
+
     function test_oracle_constructor() public {
         assertEq(daiEthLPOracle.src(), DAI_ETH_UNI_POOL);  // Verify source is DAI-ETH pool
         assertEq(daiEthLPOracle.orb0(), USDC_ORACLE);      // Verify token 0 oracle is USDC oracle

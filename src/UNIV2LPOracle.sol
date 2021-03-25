@@ -117,8 +117,8 @@ contract UNIV2LPOracle {
     modifier stoppable { require(stopped == 0, "UNIV2LPOracle/is-stopped"); _; }
 
     // --- Data ---
-    uint256 private immutable normalizer0;  // Multiplicative factor that normalizes a token0 balance to a WAD; 10^(18 - dec)
-    uint256 private immutable normalizer1;  // Multiplicative factor that normalizes a token1 balance to a WAD; 10^(18 - dec)
+    uint256 private immutable normalizer;  // Multiplicative factor that normalizes a token pair balance to a WAD; 10^(18 - dec)
+   
 
     address public            orb0;  // Oracle for token0, ideally a Medianizer
     address public            orb1;  // Oracle for token1, ideally a Medianizer
@@ -188,10 +188,10 @@ contract UNIV2LPOracle {
         wat  = _wat;
         uint256 dec0 = uint256(ERC20Like(UniswapV2PairLike(_src).token0()).decimals());
         require(dec0 <= 18, "UNIV2LPOracle/token0-dec-gt-18");
-        normalizer0 = 10 ** (18 - dec0);  // Calculate normalization factor of token0
+        
         uint256 dec1 = uint256(ERC20Like(UniswapV2PairLike(_src).token1()).decimals());
         require(dec1 <= 18, "UNIV2LPOracle/token1-dec-gt-18");
-        normalizer1 = 10 ** (18 - dec1);  // Calculate normalization factor of token1
+        normalizer = mul(10 ** (18 - dec1), 10 ** (18 - dec0));  // Calculate normalization factor of token1
         orb0 = _orb0;
         orb1 = _orb1;
     }
@@ -240,13 +240,11 @@ contract UNIV2LPOracle {
         require(res0 > 0 && res1 > 0, "UNIV2LPOracle/invalid-reserves");
         require(ts == block.timestamp);
 
-        // Adjust reserves w/ respect to decimals
-        // TODO: is the risk of overflow here worth mitigating? (consider an attacker who can mint a token at will)
-        if (normalizer0 > 1) res0 = uint112(res0 * normalizer0);
-        if (normalizer1 > 1) res1 = uint112(res1 * normalizer1);
+        
 
         // Calculate constant product invariant k (WAD * WAD)
-        uint256 k = mul(res0, res1);
+        // Explicitly cast reserves to uint256
+        uint256 k = mul(normalizer, mul(uint256(res0), uint256(res1)));
 
         // All Oracle prices are priced with 18 decimals against USD
         uint256 val0 = OracleLike(orb0).read();  // Query token0 price from oracle (WAD)
