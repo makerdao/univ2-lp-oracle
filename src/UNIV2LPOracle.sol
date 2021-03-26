@@ -187,7 +187,6 @@ contract UNIV2LPOracle {
         wat  = _wat;
         uint256 dec0 = uint256(ERC20Like(UniswapV2PairLike(_src).token0()).decimals());
         require(dec0 <= 18, "UNIV2LPOracle/token0-dec-gt-18");
-        
         uint256 dec1 = uint256(ERC20Like(UniswapV2PairLike(_src).token1()).decimals());
         require(dec1 <= 18, "UNIV2LPOracle/token1-dec-gt-18");
         normalizer = mul(10 ** (18 - dec1), 10 ** (18 - dec0));  // Calculate normalization factor of token1
