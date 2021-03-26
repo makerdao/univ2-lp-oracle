@@ -362,9 +362,6 @@ contract UNIV2LPOracleTest is DSTest {
         // Since we have confidence in Babylonian method, we simply check for equivalence
         assertEq(rootVal, rootAltVal);
     }
-
-
-
     uint112 max112 = type(uint112).max;
 
     function test_seek_equivalence(
