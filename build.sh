@@ -17,7 +17,7 @@ if [ ${MAJOR} = 0 ]; then
         echo "Incompatible dapp version; must use at least 0.32.2"
         exit 1
     fi
-    if [ ${PATCH} -lt 2 ]; then
+    if [ ${MINOR} = 32 ] && [ ${PATCH} -lt 2 ]; then
         echo "Incompatible dapp version; must use at least 0.32.2"
         exit 1
     fi
