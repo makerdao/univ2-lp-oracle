@@ -118,7 +118,6 @@ contract UNIV2LPOracle {
 
     // --- Data ---
     uint256 private immutable normalizer;  // Multiplicative factor that normalizes a token pair balance product to WAD^2; 10^(36 - dec0 - dec1)
-   
 
     address public            orb0;  // Oracle for token0, ideally a Medianizer
     address public            orb1;  // Oracle for token1, ideally a Medianizer
