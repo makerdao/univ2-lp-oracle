@@ -252,10 +252,11 @@ contract UNIV2LPOracle {
         uint256 supply = ERC20Like(src).totalSupply();
 
         // No need to check that the supply is nonzero, Solidity reverts on division by zero.
-        quote = uint128(
-                mul(2 * WAD, sqrt(wmul(k, wmul(val0, val1))))
-                    / supply
-        );
+        uint256 preq =  mul(2 * WAD, sqrt(wmul(k, wmul(val0, val1))))
+                    / supply;
+
+        require(preq <= ((2 ** 128) - 1), "UNIV2LPOracle/quote-overflow");
+        quote = uint128(preq);
     }
 
     function poke() external stoppable {
