@@ -238,8 +238,6 @@ contract UNIV2LPOracle {
         require(res0 > 0 && res1 > 0, "UNIV2LPOracle/invalid-reserves");
         require(ts == block.timestamp);
 
-        
-
         // Calculate constant product invariant k (WAD * WAD)
         // Explicitly cast reserves to uint256
         uint256 k = mul(normalizer, mul(uint256(res0), uint256(res1)));
