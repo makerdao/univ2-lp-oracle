@@ -117,7 +117,7 @@ contract UNIV2LPOracle {
     modifier stoppable { require(stopped == 0, "UNIV2LPOracle/is-stopped"); _; }
 
     // --- Data ---
-    uint256 private immutable normalizer;  // Multiplicative factor that normalizes a token pair balance to a WAD; 10^(18 - dec)
+    uint256 private immutable normalizer;  // Multiplicative factor that normalizes a token pair balance product to WAD^2; 10^(36 - dec0 - dec1)
    
 
     address public            orb0;  // Oracle for token0, ideally a Medianizer
