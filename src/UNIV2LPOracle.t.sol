@@ -566,7 +566,7 @@ contract UNIV2LPOracleTest is DSTest {
         daiEthLPOracle.pass();
         daiEthLPOracle.poke();
         diffGas = preGas - gasleft();
-        assertTrue(diffGas <= 88375);  // Will need to be updated for the Berlin hardfork.
+        assertTrue(diffGas <= 88449);  // Will need to be updated for the Berlin hardfork.
         log_named_uint("pass+poke gas", diffGas);
 
         require(!daiEthLPOracle.pass());
