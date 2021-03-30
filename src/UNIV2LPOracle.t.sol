@@ -551,34 +551,37 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(daiEthLPOracle.pass());                           // Fail pass
     }
 
-    // This test examines the gas costs of a common pattern which needs
-    // to be maximally gas-optimized.
-    function test_gas_pass_poke() public {
+    function test_gas_pass() public {
         uint256 preGas;
         uint256 diffGas;
 
         require(daiEthLPOracle.pass());
 
-        // Run the affected parts of the common
-        //   if (orcl.pass()) orcl.poke();
-        // pattern for the case pass() returns true.
-        preGas = gasleft();
-        daiEthLPOracle.pass();
-        daiEthLPOracle.poke();
-        diffGas = preGas - gasleft();
-        assertTrue(diffGas <= 88449);  // Will need to be updated for the Berlin hardfork.
-        log_named_uint("pass+poke gas", diffGas);
-
-        require(!daiEthLPOracle.pass());
-
-        // Run the affected parts of the common
-        //   if (orcl.pass()) orcl.poke();
-        // pattern for the case pass() returns false.
         preGas = gasleft();
         daiEthLPOracle.pass();
         diffGas = preGas - gasleft();
         assertTrue(diffGas <= 3447);  // Will need to be updated for the Berlin hardfork.
-        log_named_uint("pass-only gas", diffGas);
+        log_named_uint("pass true gas", diffGas);
+
+        daiEthLPOracle.poke();
+        require(!daiEthLPOracle.pass());
+
+        preGas = gasleft();
+        daiEthLPOracle.pass();
+        diffGas = preGas - gasleft();
+        assertTrue(diffGas <= 3447);  // Will need to be updated for the Berlin hardfork.
+        log_named_uint("pass false gas", diffGas);
+    }
+
+    // Most critical function to minimize the gas costs of since it's called frequently and must succeed.
+    function test_gas_poke() public {
+        require(daiEthLPOracle.pass());
+
+        uint256 preGas = gasleft();
+        daiEthLPOracle.poke();
+        uint256 diffGas = preGas - gasleft();
+        assertTrue(diffGas <= 85027);  // Will need to be updated for the Berlin hardfork.
+        log_named_uint("poke gas", diffGas);
     }
 
     function testFail_whitelist_peep() public {
