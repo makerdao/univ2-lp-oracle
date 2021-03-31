@@ -325,7 +325,7 @@ contract UNIV2LPOracle {
         // but ensures no extra SLOADs are performed.
         //
         // Even if _hop = (2^16 - 1), the maximum possible value, add(timestamp(), _hop)
-        // will not overflow (even a 224 bit value) for a very long time.
+        // will not overflow (even a 232 bit value) for a very long time.
         //
         // Also, we know stopped was zero, so there is no need to account for it explicitly here.
         assembly {
