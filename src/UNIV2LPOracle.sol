@@ -110,8 +110,8 @@ contract UNIV2LPOracle {
     // hop and zph are packed into single slot to reduce SLOADs;
     // this outweighs the cost from added bitmasking operations.
     uint8   public stopped;         // Stop/start ability to update
-    uint24  public hop = 1 hours;   // Minimum time in between price updates
-    uint224 public zph;             // Time of last price update plus hop
+    uint16  public hop = 1 hours;   // Minimum time in between price updates
+    uint232 public zph;             // Time of last price update plus hop
 
     bytes32 public immutable wat;   // Label of token whose price is being tracked
 
@@ -212,8 +212,8 @@ contract UNIV2LPOracle {
     }
 
     function step(uint256 _hop) external auth {
-        require(_hop <= uint24(-1), "UNIV2LPOracle/invalid-hop");
-        hop = uint24(_hop);
+        require(_hop <= uint16(-1), "UNIV2LPOracle/invalid-hop");
+        hop = uint16(_hop);
         emit Step(_hop);
     }
 
@@ -254,7 +254,7 @@ contract UNIV2LPOracle {
                 iszero(
                     lt(
                         timestamp(),
-                        shr(32, sload(1))  // zph
+                        shr(24, sload(1))  // zph
                     )
                 )
             mstore(0, ok)
@@ -298,9 +298,9 @@ contract UNIV2LPOracle {
             uint256 _stopped;  // block-scoping _stopped here saves a little gas
             assembly {
                 let _slot1 := sload(1)
-                _stopped   := and(_slot1,         0xff    )
-                _hop       := and(shr(8, _slot1), 0xffffff)
-                _zph       := shr(32, _slot1)
+                _stopped   := and(_slot1,         0xff  )
+                _hop       := and(shr(8, _slot1), 0xffff)
+                _zph       := shr(24, _slot1)
             }
 
             // When stopped, values are set to zero and should remain such; thus, disallow updating in that case.
@@ -324,7 +324,7 @@ contract UNIV2LPOracle {
         //
         // but ensures no extra SLOADs are performed.
         //
-        // Even if _hop = (2^24 - 1), the maximum possible value, add(timestamp(), _hop)
+        // Even if _hop = (2^16 - 1), the maximum possible value, add(timestamp(), _hop)
         // will not overflow (even a 224 bit value) for a very long time.
         //
         // Also, we know stopped was zero, so there is no need to account for it explicitly here.
@@ -332,8 +332,8 @@ contract UNIV2LPOracle {
             sstore(
                 1,
                 add(
-                    shl(                          // zph value starts 32 bits in
-                        32,
+                    shl(                          // zph value starts 24 bits in
+                        24,
                         add(timestamp(), _hop)
                     ),
                     shl(                          // hop value starts 8 bits in
