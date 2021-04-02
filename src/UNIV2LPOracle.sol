@@ -309,19 +309,16 @@ contract UNIV2LPOracle {
             sstore(
                 1,
                 add(
-                    shl(                          // zph value starts 24 bits in
-                        24,
-                        add(timestamp(), _hop)
-                    ),
-                    shl(                          // hop value starts 8 bits in
-                        8,
-                        _hop
-                    )
+                    // zph value starts 24 bits in
+                    shl(24, add(timestamp(), _hop)),
+
+                    // hop value starts 8 bits in
+                    shl(8, _hop)
                 )
             )
         }
 
-        // Equivalent to emitting Value(cur.val, nxt.val), but averts two extra SLOADs.
+        // Equivalent to emitting Value(cur.val, nxt.val), but averts extra SLOADs.
         emit Value(_cur.val, _val);
 
         // Safe to terminate immediately since no postfix modifiers are applied.
