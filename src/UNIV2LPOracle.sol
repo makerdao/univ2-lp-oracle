@@ -117,8 +117,8 @@ contract UNIV2LPOracle {
     modifier stoppable { require(stopped == 0, "UNIV2LPOracle/is-stopped"); _; }
 
     // --- Data ---
-    uint256 private immutable PREC_0;  // Precision (10^decimals) of token0
-    uint256 private immutable PREC_1;  // Precision (10^decimals) of token1
+    uint256 private immutable UNIT_0;  // Numerical representation of one token of token0 (10^decimals) 
+    uint256 private immutable UNIT_1;  // Numerical representation of one token of token1 (10^decimals) 
 
     address public            orb0;  // Oracle for token0, ideally a Medianizer
     address public            orb1;  // Oracle for token1, ideally a Medianizer
@@ -188,10 +188,10 @@ contract UNIV2LPOracle {
         wat  = _wat;
         uint256 dec0 = uint256(ERC20Like(UniswapV2PairLike(_src).token0()).decimals());
         require(dec0 <= 18, "UNIV2LPOracle/token0-dec-gt-18");
-        PREC_0 = 10 ** dec0;
+        UNIT_0 = 10 ** dec0;
         uint256 dec1 = uint256(ERC20Like(UniswapV2PairLike(_src).token1()).decimals());
         require(dec1 <= 18, "UNIV2LPOracle/token1-dec-gt-18");
-        PREC_1 = 10 ** dec1;
+        UNIT_1 = 10 ** dec1;
         orb0 = _orb0;
         orb1 = _orb1;
     }
@@ -251,8 +251,8 @@ contract UNIV2LPOracle {
 
         // The structure of this calculation should work well even for tokens with very high or very low prices,
         // as the dollar value of each reserve should lie in a fairly controlled range regardless of the token prices.
-        uint256 value0 = mul(p0, uint256(res0)) / PREC_0;
-        uint256 value1 = mul(p1, uint256(res1)) / PREC_1;
+        uint256 value0 = mul(p0, uint256(res0)) / UNIT_0;
+        uint256 value1 = mul(p1, uint256(res1)) / UNIT_1;
         uint256 preq = mul(2 * WAD, sqrt(mul(value0, value1))) / supply;  // Will revert if supply == 0
         require(preq < 2 ** 128, "UNIV2LPOracle/quote-overflow");
         quote = uint128(preq);
