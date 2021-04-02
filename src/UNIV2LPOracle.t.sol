@@ -551,36 +551,14 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(daiEthLPOracle.pass());                           // Fail pass
     }
 
-    function test_gas_pass() public {
-        uint256 preGas;
-        uint256 diffGas;
-
-        require(daiEthLPOracle.pass());
-
-        preGas = gasleft();
-        daiEthLPOracle.pass();
-        diffGas = preGas - gasleft();
-        assertTrue(diffGas <= 3447);  // Will need to be updated for the Berlin hardfork.
-        log_named_uint("pass true gas", diffGas);
-
-        daiEthLPOracle.poke();
-        require(!daiEthLPOracle.pass());
-
-        preGas = gasleft();
-        daiEthLPOracle.pass();
-        diffGas = preGas - gasleft();
-        assertTrue(diffGas <= 3447);  // Will need to be updated for the Berlin hardfork.
-        log_named_uint("pass false gas", diffGas);
-    }
-
-    // Most critical function to minimize the gas costs of since it's called frequently and must succeed.
+    // Most critical function to minimize the gas costs of since it must be successfully executed frequently.
     function test_gas_poke() public {
         require(daiEthLPOracle.pass());
 
         uint256 preGas = gasleft();
         daiEthLPOracle.poke();
         uint256 diffGas = preGas - gasleft();
-        assertTrue(diffGas <= 85058);  // Will need to be updated for the Berlin hardfork.
+        assertTrue(diffGas <= 85058);  // Will need to be updated after the Berlin hardfork.
         log_named_uint("poke gas", diffGas);
     }
 

@@ -235,31 +235,8 @@ contract UNIV2LPOracle {
         return sub(zph, hop);
     }
 
-    function pass() external view returns (bool /*ok*/) {
-
-        // The below is equivalent to:
-        //
-        //     return block.timestamp >= zph;
-        //
-        // since "x >= y" is equivalent to "!(x < y)".
-        //
-        // Overwriting memory slot zero is safe since
-        //   1) we return immediately,
-        //   2) EVM memory is call-local, and
-        //   3) pass() is an external function.
-        //
-        // Returning immediately is fine since there are no postfix modifiers to execute.
-        assembly {
-            let ok :=
-                iszero(
-                    lt(
-                        timestamp(),
-                        shr(24, sload(1))  // zph
-                    )
-                )
-            mstore(0, ok)
-            return(0, 0x20)
-        }
+    function pass() external view returns (bool) {
+        return block.timestamp >= zph;
     }
 
     function seek() internal returns (uint128 quote) {
