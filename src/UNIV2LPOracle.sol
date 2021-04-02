@@ -117,7 +117,8 @@ contract UNIV2LPOracle {
     modifier stoppable { require(stopped == 0, "UNIV2LPOracle/is-stopped"); _; }
 
     // --- Data ---
-    uint256 private immutable normalizer;  // Multiplicative factor that normalizes a token pair balance product to WAD^2; 10^(36 - dec0 - dec1)
+    uint256 private immutable PREC_0;  // Precision (10^decimals) of token0
+    uint256 private immutable PREC_1;  // Precision (10^decimals) of token1
 
     address public            orb0;  // Oracle for token0, ideally a Medianizer
     address public            orb1;  // Oracle for token1, ideally a Medianizer
@@ -187,9 +188,10 @@ contract UNIV2LPOracle {
         wat  = _wat;
         uint256 dec0 = uint256(ERC20Like(UniswapV2PairLike(_src).token0()).decimals());
         require(dec0 <= 18, "UNIV2LPOracle/token0-dec-gt-18");
+        PREC_0 = 10 ** dec0;
         uint256 dec1 = uint256(ERC20Like(UniswapV2PairLike(_src).token1()).decimals());
         require(dec1 <= 18, "UNIV2LPOracle/token1-dec-gt-18");
-        normalizer = mul(10 ** (18 - dec1), 10 ** (18 - dec0));  // Calculate normalization factor of token1
+        PREC_1 = 10 ** dec1;
         orb0 = _orb0;
         orb1 = _orb1;
     }
@@ -238,22 +240,20 @@ contract UNIV2LPOracle {
         require(res0 > 0 && res1 > 0, "UNIV2LPOracle/invalid-reserves");
         require(ts == block.timestamp);
 
-        // Calculate constant product invariant k (WAD * WAD)
-        // Explicitly cast reserves to uint256
-        uint256 k = mul(normalizer, mul(uint256(res0), uint256(res1)));
-
         // All Oracle prices are priced with 18 decimals against USD
-        uint256 val0 = OracleLike(orb0).read();  // Query token0 price from oracle (WAD)
-        uint256 val1 = OracleLike(orb1).read();  // Query token1 price from oracle (WAD)
-        require(val0 != 0, "UNIV2LPOracle/invalid-oracle-0-price");
-        require(val1 != 0, "UNIV2LPOracle/invalid-oracle-1-price");
+        uint256 p0 = OracleLike(orb0).read();  // Query token0 price from oracle (WAD)
+        uint256 p1 = OracleLike(orb1).read();  // Query token1 price from oracle (WAD)
+        require(p0 != 0, "UNIV2LPOracle/invalid-oracle-0-price");
+        require(p1 != 0, "UNIV2LPOracle/invalid-oracle-1-price");
 
         // Get LP token supply
         uint256 supply = ERC20Like(src).totalSupply();
 
-        // No need to check that the supply is nonzero, Solidity reverts on division by zero.
-        uint256 preq = mul(2 * WAD, sqrt(wmul(k, wmul(val0, val1)))) / supply;
-
+        // The structure of this calculation should work well even for tokens with very high or very low prices,
+        // as the dollar value of each reserve should lie in a fairly controlled range regardless of the token prices.
+        uint256 value0 = mul(p0, uint256(res0)) / PREC_0;
+        uint256 value1 = mul(p1, uint256(res1)) / PREC_1;
+        uint256 preq = mul(2 * WAD, sqrt(mul(value0, value1))) / supply;  // Will revert if supply == 0
         require(preq < 2 ** 128, "UNIV2LPOracle/quote-overflow");
         quote = uint128(preq);
     }
