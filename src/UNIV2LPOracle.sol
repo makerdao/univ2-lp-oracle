@@ -239,7 +239,6 @@ contract UNIV2LPOracle {
         // Get reserves of uniswap liquidity pool
         (uint112 r0, uint112 r1, uint32 ts) = UniswapV2PairLike(src).getReserves();
         require(r0 > 0 && r1 > 0, "UNIV2LPOracle/invalid-reserves");
-        require(ts == block.timestamp);
 
         // All Oracle prices are priced with 18 decimals against USD
         uint256 p0 = OracleLike(orb0).read();  // Query token0 price from oracle (WAD)
