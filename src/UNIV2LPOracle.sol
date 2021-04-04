@@ -129,17 +129,8 @@ contract UNIV2LPOracle {
     function add(uint x, uint y) internal pure returns (uint z) {
         require((z = x + y) >= x, "ds-math-add-overflow");
     }
-    function sub(uint x, uint y) internal pure returns (uint z) {
-        require((z = x - y) <= x, "ds-math-sub-underflow");
-    }
     function mul(uint x, uint y) internal pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x, "ds-math-mul-overflow");
-    }
-    function wmul(uint x, uint y) internal pure returns (uint z) {
-        z = add(mul(x, y), WAD / 2) / WAD;
-    }
-    function wdiv(uint x, uint y) internal pure returns (uint z) {
-        z = add(mul(x, WAD), y / 2) / y;
     }
 
     // FROM https://github.com/abdk-consulting/abdk-libraries-solidity/blob/16d7e1dd8628dfa2f88d5dadab731df7ada70bdd/ABDKMath64x64.sol#L687
