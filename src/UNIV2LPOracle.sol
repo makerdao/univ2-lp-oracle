@@ -243,8 +243,8 @@ contract UNIV2LPOracle {
 
         // All Oracle prices are priced with 18 decimals against USD
         uint256 p0 = OracleLike(orb0).read();  // Query token0 price from oracle (WAD)
-        uint256 p1 = OracleLike(orb1).read();  // Query token1 price from oracle (WAD)
         require(p0 != 0, "UNIV2LPOracle/invalid-oracle-0-price");
+        uint256 p1 = OracleLike(orb1).read();  // Query token1 price from oracle (WAD)
         require(p1 != 0, "UNIV2LPOracle/invalid-oracle-1-price");
 
         // Get LP token supply
