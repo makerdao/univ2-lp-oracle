@@ -25,27 +25,37 @@
 
 // Two-asset constant product pools, neglecting fees, satisfy (before and after trades):
 //
-// r_0 * r_1 = k                (1)
+// r_0 * r_1 = k                                    (1)
 //
 // where r_0 and r_1 are the reserves of the two tokens held by the pool.
 // The price of LP tokens (i.e. pool shares) needs to be evaluated based on 
 // reserve values r_0 and r_1 that cannot be arbitraged, i.e. values that
 // give the two halves of the pool equal economic value:
 //
-// r_0 * p_0 = r_1 * p_1        (2)
+// r_0 * p_0 = r_1 * p_1                            (2)
 // 
 // (p_i is the price of pool asset i in some reference unit of account).
 // Using (1) and (2) we can compute the arbitrage-free reserve values in a manner
 // that depends only on k (which can be derived from the current reserve balances,
 // even if they are far from equilibrium) and market prices p_i obtained from a trusted source:
 //
-// r_0 = sqrt(k * p_1 / p_0)    (3)
+// R_0 = sqrt(k * p_1 / p_0)                        (3)
 //   and
-// r_1 = sqrt(k * p_0 / p_1)    (4)
+// R_1 = sqrt(k * p_0 / p_1)                        (4)
 //
 // The value of an LP token is then, combining (3) and (4):
 //
-// (p_0 * r_0 + p_1 * r_1) / LP_supply = 2 * sqrt(k * p_0 * p_1) / LP_supply
+// (p_0 * R_0 + p_1 * R_1) / LP_supply
+//     = 2 * sqrt(k * p_0 * p_1) / LP_supply        (5)
+//
+// (5) can be re-expressed in terms of the current pool reserves r_0 and r_1:
+//
+// 2 * sqrt((r_0 * p_0) * (r_1 * p_1)) / LP_supply  (6)
+//
+// The structure of (6) is well-suited for use in fixed-point EVM calculations, as the
+// terms (r_0 * p_0) and (r_1 * p_1), being the values of the reserves in the reference unit,
+// should have reasonably-bounded sizes. This reduces the likelihood of overflow due to
+// tokens with very low prices but large total supplies.
 
 pragma solidity =0.6.12;
 
