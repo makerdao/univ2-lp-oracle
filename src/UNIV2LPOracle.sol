@@ -250,8 +250,9 @@ contract UNIV2LPOracle {
         // Get LP token supply
         uint256 supply = ERC20Like(src).totalSupply();
 
-        // The structure of this calculation should work well even for tokens with very high or very low prices,
-        // as the dollar value of each reserve should lie in a fairly controlled range regardless of the token prices.
+        // This calculation should be overflow-resistant even for tokens with very high or very
+        // low prices, as the dollar value of each reserve should lie in a fairly controlled range
+        // regardless of the token prices.
         uint256 value0 = mul(p0, uint256(res0)) / UNIT_0;
         uint256 value1 = mul(p1, uint256(res1)) / UNIT_1;
         uint256 preq = mul(2 * WAD, sqrt(mul(value0, value1))) / supply;  // Will revert if supply == 0
