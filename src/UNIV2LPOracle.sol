@@ -237,8 +237,8 @@ contract UNIV2LPOracle {
         UniswapV2PairLike(src).sync();
 
         // Get reserves of uniswap liquidity pool
-        (uint112 res0, uint112 res1, uint32 ts) = UniswapV2PairLike(src).getReserves();
-        require(res0 > 0 && res1 > 0, "UNIV2LPOracle/invalid-reserves");
+        (uint112 r0, uint112 r1, uint32 ts) = UniswapV2PairLike(src).getReserves();
+        require(r0 > 0 && r1 > 0, "UNIV2LPOracle/invalid-reserves");
         require(ts == block.timestamp);
 
         // All Oracle prices are priced with 18 decimals against USD
@@ -253,8 +253,8 @@ contract UNIV2LPOracle {
         // This calculation should be overflow-resistant even for tokens with very high or very
         // low prices, as the dollar value of each reserve should lie in a fairly controlled range
         // regardless of the token prices.
-        uint256 value0 = mul(p0, uint256(res0)) / UNIT_0;
-        uint256 value1 = mul(p1, uint256(res1)) / UNIT_1;
+        uint256 value0 = mul(p0, uint256(r0)) / UNIT_0;
+        uint256 value1 = mul(p1, uint256(r1)) / UNIT_1;
         uint256 preq = mul(2 * WAD, sqrt(mul(value0, value1))) / supply;  // Will revert if supply == 0
         require(preq < 2 ** 128, "UNIV2LPOracle/quote-overflow");
         quote = uint128(preq);
