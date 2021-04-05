@@ -252,11 +252,11 @@ contract UNIV2LPOracle {
         // This calculation should be overflow-resistant even for tokens with very high or very
         // low prices, as the dollar value of each reserve should lie in a fairly controlled range
         // regardless of the token prices.
-        uint256 value0 = mul(p0, uint256(r0)) / UNIT_0;
-        uint256 value1 = mul(p1, uint256(r1)) / UNIT_1;
+        uint256 value0 = mul(p0, uint256(r0)) / UNIT_0;  // WAD
+        uint256 value1 = mul(p1, uint256(r1)) / UNIT_1;  // WAD
         uint256 preq = mul(2 * WAD, sqrt(mul(value0, value1))) / supply;  // Will revert if supply == 0
         require(preq < 2 ** 128, "UNIV2LPOracle/quote-overflow");
-        quote = uint128(preq);
+        quote = uint128(preq);  // WAD
     }
 
     function poke() external stoppable {
