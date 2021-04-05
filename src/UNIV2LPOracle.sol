@@ -25,27 +25,37 @@
 
 // Two-asset constant product pools, neglecting fees, satisfy (before and after trades):
 //
-// r_0 * r_1 = k                (1)
+// r_0 * r_1 = k                                    (1)
 //
 // where r_0 and r_1 are the reserves of the two tokens held by the pool.
 // The price of LP tokens (i.e. pool shares) needs to be evaluated based on 
 // reserve values r_0 and r_1 that cannot be arbitraged, i.e. values that
 // give the two halves of the pool equal economic value:
 //
-// r_0 * p_0 = r_1 * p_1        (2)
+// r_0 * p_0 = r_1 * p_1                            (2)
 // 
 // (p_i is the price of pool asset i in some reference unit of account).
 // Using (1) and (2) we can compute the arbitrage-free reserve values in a manner
 // that depends only on k (which can be derived from the current reserve balances,
 // even if they are far from equilibrium) and market prices p_i obtained from a trusted source:
 //
-// r_0 = sqrt(k * p_1 / p_0)    (3)
+// R_0 = sqrt(k * p_1 / p_0)                        (3)
 //   and
-// r_1 = sqrt(k * p_0 / p_1)    (4)
+// R_1 = sqrt(k * p_0 / p_1)                        (4)
 //
 // The value of an LP token is then, combining (3) and (4):
 //
-// (p_0 * r_0 + p_1 * r_1) / LP_supply = 2 * sqrt(k * p_0 * p_1) / LP_supply
+// (p_0 * R_0 + p_1 * R_1) / LP_supply
+//     = 2 * sqrt(k * p_0 * p_1) / LP_supply        (5)
+//
+// (5) can be re-expressed in terms of the current pool reserves r_0 and r_1:
+//
+// 2 * sqrt((r_0 * p_0) * (r_1 * p_1)) / LP_supply  (6)
+//
+// The structure of (6) is well-suited for use in fixed-point EVM calculations, as the
+// terms (r_0 * p_0) and (r_1 * p_1), being the values of the reserves in the reference unit,
+// should have reasonably-bounded sizes. This reduces the likelihood of overflow due to
+// tokens with very low prices but large total supplies.
 
 pragma solidity =0.6.12;
 
@@ -117,7 +127,8 @@ contract UNIV2LPOracle {
     modifier stoppable { require(stopped == 0, "UNIV2LPOracle/is-stopped"); _; }
 
     // --- Data ---
-    uint256 private immutable normalizer;  // Multiplicative factor that normalizes a token pair balance product to WAD^2; 10^(36 - dec0 - dec1)
+    uint256 private immutable UNIT_0;  // Numerical representation of one token of token0 (10^decimals) 
+    uint256 private immutable UNIT_1;  // Numerical representation of one token of token1 (10^decimals) 
 
     address public            orb0;  // Oracle for token0, ideally a Medianizer
     address public            orb1;  // Oracle for token1, ideally a Medianizer
@@ -128,17 +139,8 @@ contract UNIV2LPOracle {
     function add(uint x, uint y) internal pure returns (uint z) {
         require((z = x + y) >= x, "ds-math-add-overflow");
     }
-    function sub(uint x, uint y) internal pure returns (uint z) {
-        require((z = x - y) <= x, "ds-math-sub-underflow");
-    }
     function mul(uint x, uint y) internal pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x, "ds-math-mul-overflow");
-    }
-    function wmul(uint x, uint y) internal pure returns (uint z) {
-        z = add(mul(x, y), WAD / 2) / WAD;
-    }
-    function wdiv(uint x, uint y) internal pure returns (uint z) {
-        z = add(mul(x, WAD), y / 2) / y;
     }
 
     // FROM https://github.com/abdk-consulting/abdk-libraries-solidity/blob/16d7e1dd8628dfa2f88d5dadab731df7ada70bdd/ABDKMath64x64.sol#L687
@@ -187,9 +189,10 @@ contract UNIV2LPOracle {
         wat  = _wat;
         uint256 dec0 = uint256(ERC20Like(UniswapV2PairLike(_src).token0()).decimals());
         require(dec0 <= 18, "UNIV2LPOracle/token0-dec-gt-18");
+        UNIT_0 = 10 ** dec0;
         uint256 dec1 = uint256(ERC20Like(UniswapV2PairLike(_src).token1()).decimals());
         require(dec1 <= 18, "UNIV2LPOracle/token1-dec-gt-18");
-        normalizer = mul(10 ** (18 - dec1), 10 ** (18 - dec0));  // Calculate normalization factor of token1
+        UNIT_1 = 10 ** dec1;
         orb0 = _orb0;
         orb1 = _orb1;
     }
@@ -234,28 +237,26 @@ contract UNIV2LPOracle {
         UniswapV2PairLike(src).sync();
 
         // Get reserves of uniswap liquidity pool
-        (uint112 res0, uint112 res1, uint32 ts) = UniswapV2PairLike(src).getReserves();
-        require(res0 > 0 && res1 > 0, "UNIV2LPOracle/invalid-reserves");
-        require(ts == block.timestamp);
-
-        // Calculate constant product invariant k (WAD * WAD)
-        // Explicitly cast reserves to uint256
-        uint256 k = mul(normalizer, mul(uint256(res0), uint256(res1)));
+        (uint112 r0, uint112 r1,) = UniswapV2PairLike(src).getReserves();
+        require(r0 > 0 && r1 > 0, "UNIV2LPOracle/invalid-reserves");
 
         // All Oracle prices are priced with 18 decimals against USD
-        uint256 val0 = OracleLike(orb0).read();  // Query token0 price from oracle (WAD)
-        uint256 val1 = OracleLike(orb1).read();  // Query token1 price from oracle (WAD)
-        require(val0 != 0, "UNIV2LPOracle/invalid-oracle-0-price");
-        require(val1 != 0, "UNIV2LPOracle/invalid-oracle-1-price");
+        uint256 p0 = OracleLike(orb0).read();  // Query token0 price from oracle (WAD)
+        require(p0 != 0, "UNIV2LPOracle/invalid-oracle-0-price");
+        uint256 p1 = OracleLike(orb1).read();  // Query token1 price from oracle (WAD)
+        require(p1 != 0, "UNIV2LPOracle/invalid-oracle-1-price");
 
         // Get LP token supply
         uint256 supply = ERC20Like(src).totalSupply();
 
-        // No need to check that the supply is nonzero, Solidity reverts on division by zero.
-        uint256 preq = mul(2 * WAD, sqrt(wmul(k, wmul(val0, val1)))) / supply;
-
+        // This calculation should be overflow-resistant even for tokens with very high or very
+        // low prices, as the dollar value of each reserve should lie in a fairly controlled range
+        // regardless of the token prices.
+        uint256 value0 = mul(p0, uint256(r0)) / UNIT_0;  // WAD
+        uint256 value1 = mul(p1, uint256(r1)) / UNIT_1;  // WAD
+        uint256 preq = mul(2 * WAD, sqrt(mul(value0, value1))) / supply;  // Will revert if supply == 0
         require(preq < 2 ** 128, "UNIV2LPOracle/quote-overflow");
-        quote = uint128(preq);
+        quote = uint128(preq);  // WAD
     }
 
     function poke() external stoppable {
