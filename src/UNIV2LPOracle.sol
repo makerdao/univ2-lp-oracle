@@ -97,7 +97,7 @@ contract UNIV2LPOracleFactory {
 contract UNIV2LPOracle {
 
     // --- Auth ---
-    mapping (address => uint) public wards;                                       // Addresses with admin authority
+    mapping (address => uint256) public wards;                                       // Addresses with admin authority
     function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }  // Add admin
     function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }  // Remove admin
     modifier auth {
@@ -137,13 +137,13 @@ contract UNIV2LPOracle {
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
 
-    function add(uint x, uint y) internal pure returns (uint z) {
+    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x, "ds-math-add-overflow");
     }
-    function sub(uint x, uint y) internal pure returns (uint z) {
+    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x, "ds-math-sub-underflow");
     }
-    function mul(uint x, uint y) internal pure returns (uint z) {
+    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x, "ds-math-mul-overflow");
     }
 
@@ -331,16 +331,16 @@ contract UNIV2LPOracle {
     }
 
     function peek() external view toll returns (bytes32,bool) {
-        return (bytes32(uint(cur.val)), cur.has == 1);
+        return (bytes32(uint256(cur.val)), cur.has == 1);
     }
 
     function peep() external view toll returns (bytes32,bool) {
-        return (bytes32(uint(nxt.val)), nxt.has == 1);
+        return (bytes32(uint256(nxt.val)), nxt.has == 1);
     }
 
     function read() external view toll returns (bytes32) {
         require(cur.has == 1, "UNIV2LPOracle/no-current-value");
-        return (bytes32(uint(cur.val)));
+        return (bytes32(uint256(cur.val)));
     }
 
     function kiss(address a) external auth {
@@ -350,7 +350,7 @@ contract UNIV2LPOracle {
     }
 
     function kiss(address[] calldata a) external auth {
-        for(uint i = 0; i < a.length; i++) {
+        for(uint256 i = 0; i < a.length; i++) {
             require(a[i] != address(0), "UNIV2LPOracle/no-contract-0");
             bud[a[i]] = 1;
             emit Kiss(a[i]);
@@ -363,7 +363,7 @@ contract UNIV2LPOracle {
     }
 
     function diss(address[] calldata a) external auth {
-        for(uint i = 0; i < a.length; i++) {
+        for(uint256 i = 0; i < a.length; i++) {
             bud[a[i]] = 0;
             emit Diss(a[i]);
         }
