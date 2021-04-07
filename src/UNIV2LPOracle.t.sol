@@ -289,7 +289,7 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(oracle.src(), DAI_ETH_UNI_POOL);           // Verify uni pool is source
         assertEq(oracle.orb0(), WBTC_ORACLE);               // Verify oracle configured correctly
         assertEq(oracle.orb1(), ETH_ORACLE);                // Verify oracle configured correctly
-        assertEq(oracle.stopped(), 0);                      // Verify contract is active
+        assertEq(uint256(oracle.stopped()), 0);             // Verify contract is active
         assertTrue(factory.isOracle(address(oracle)));      // Verify factory recorded oracle
     }
 
@@ -368,7 +368,7 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(daiEthLPOracle.orb0(), USDC_ORACLE);      // Verify token 0 oracle is USDC oracle
         assertEq(daiEthLPOracle.orb1(), ETH_ORACLE);       // Verify token 1 oracle is ETH oracle
         assertEq(daiEthLPOracle.wards(address(this)), 1);  // Verify owner
-        assertEq(daiEthLPOracle.stopped(), 0);             // Verify contract active
+        assertEq(uint256(daiEthLPOracle.stopped()), 0);    // Verify contract active
     }
 
     function test_seek_dai() public {
@@ -502,7 +502,8 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(uint256(nxtVal), 0);                                 // Verify oracle has no queued price
         assertEq(uint256(nxtHas), 0);                                 // Verify oracle has no queued price
 
-        assertEq(uint256(seekableOracleDAI.zzz()), 0);                // Verify timestamp is 0
+        assertEq(uint256(seekableOracleDAI.zph()), 0);                // Verify timestamp is 0
+        assertEq(uint256(seekableOracleDAI.zzz()), 0);                // Verify timestamp minus hop is 0 (bacwards compatibility)
 
         seekableOracleDAI.poke();                                     // Update oracle
 
@@ -514,7 +515,9 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(nxtVal > 0);                                       // Verify oracle has non-zero queued value
         assertEq(uint256(nxtHas), 1);                                 // Verify oracle has value
 
-        assertTrue(seekableOracleDAI.zzz() > 0);                      // Verify timestamp is non-zero
+        uint256 hop = seekableOracleDAI.hop();
+        assertEq(uint256(seekableOracleDAI.zph()), block.timestamp + hop);  // Verify timestamp is now + hop
+        assertEq(seekableOracleDAI.zzz() + hop, seekableOracleDAI.zph());   // Verify zzz is zhp minus hop
     }
 
     function testFail_double_poke() public {
@@ -546,6 +549,17 @@ contract UNIV2LPOracleTest is DSTest {
     function testFail_pass() public {
         daiEthLPOracle.poke();                                       // Poke oracle
         assertTrue(daiEthLPOracle.pass());                           // Fail pass
+    }
+
+    // Most critical function to minimize the gas costs of since it must be successfully executed frequently.
+    function test_gas_poke() public {
+        require(daiEthLPOracle.pass());
+
+        uint256 preGas = gasleft();
+        daiEthLPOracle.poke();
+        uint256 diffGas = preGas - gasleft();
+        assertTrue(diffGas <= 84625);  // Will need to be updated after the Berlin hardfork.
+        log_named_uint("poke gas", diffGas);
     }
 
     function testFail_whitelist_peep() public {
@@ -807,6 +821,9 @@ contract UNIV2LPOracleTest is DSTest {
         resVal = uint256(val);
         assertTrue(!has);
         assertEq(resVal, 0);
+
+        assertEq(uint256(daiEthLPOracle.zph()), 0);
+        assertEq(daiEthLPOracle.zzz(), 0);
     }
 
     function test_stop_start_poke() public {

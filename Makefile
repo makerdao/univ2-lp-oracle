@@ -1,4 +1,7 @@
-all    :; dapp --use solc:0.6.12 build
+.PHONY: build
+
+all    :  build;
+build  :; ./build.sh
 clean  :; dapp clean
-test   :; ./test.sh
+test   :; ./test.sh $(MATCH)
 deploy :; dapp create Univ2LpOracle

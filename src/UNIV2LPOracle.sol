@@ -106,8 +106,13 @@ contract UNIV2LPOracle {
     }
 
     address public immutable src;   // Price source
-    uint16  public hop = 1 hours;   // Minimum time inbetween price updates
-    uint64  public zzz;             // Time of last price update
+
+    // hop and zph are packed into single slot to reduce SLOADs;
+    // this outweighs the cost from added bitmasking operations.
+    uint8   public stopped;         // Stop/start ability to update
+    uint16  public hop = 1 hours;   // Minimum time in between price updates
+    uint232 public zph;             // Time of last price update plus hop
+
     bytes32 public immutable wat;   // Label of token whose price is being tracked
 
     // --- Whitelisting ---
@@ -122,10 +127,6 @@ contract UNIV2LPOracle {
     Feed    internal cur;  // Current price  (mem slot 0x3)
     Feed    internal nxt;  // Queued price   (mem slot 0x4)
 
-    // --- Stop ---
-    uint256 public stopped;  // Stop/start ability to read
-    modifier stoppable { require(stopped == 0, "UNIV2LPOracle/is-stopped"); _; }
-
     // --- Data ---
     uint256 private immutable UNIT_0;  // Numerical representation of one token of token0 (10^decimals) 
     uint256 private immutable UNIT_1;  // Numerical representation of one token of token1 (10^decimals) 
@@ -138,6 +139,9 @@ contract UNIV2LPOracle {
 
     function add(uint x, uint y) internal pure returns (uint z) {
         require((z = x + y) >= x, "ds-math-add-overflow");
+    }
+    function sub(uint x, uint y) internal pure returns (uint z) {
+        require((z = x - y) <= x, "ds-math-sub-underflow");
     }
     function mul(uint x, uint y) internal pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x, "ds-math-mul-overflow");
@@ -201,7 +205,7 @@ contract UNIV2LPOracle {
         stopped = 1;
         delete cur;
         delete nxt;
-        zzz = 0;
+        zph = 0;
         emit Stop();
     }
 
@@ -213,7 +217,7 @@ contract UNIV2LPOracle {
     function step(uint256 _hop) external auth {
         require(_hop <= uint16(-1), "UNIV2LPOracle/invalid-hop");
         hop = uint16(_hop);
-        emit Step(hop);
+        emit Step(_hop);
     }
 
     function link(uint256 id, address orb) external auth {
@@ -228,8 +232,14 @@ contract UNIV2LPOracle {
         emit Link(id, orb);
     }
 
-    function pass() public view returns (bool ok) {
-        return block.timestamp >= add(zzz, hop);
+    // For consistency with other oracles.
+    function zzz() external view returns (uint256) {
+        if (zph == 0) return 0;  // backwards compatibility
+        return sub(zph, hop);
+    }
+
+    function pass() external view returns (bool) {
+        return block.timestamp >= zph;
     }
 
     function seek() internal returns (uint128 quote) {
@@ -259,14 +269,65 @@ contract UNIV2LPOracle {
         quote = uint128(preq);  // WAD
     }
 
-    function poke() external stoppable {
-        require(pass(), "UNIV2LPOracle/not-passed");
-        uint128 val = seek();
-        require(val != 0, "UNIV2LPOracle/invalid-price");
-        cur = nxt;
-        nxt = Feed(val, 1);
-        zzz = uint64(block.timestamp);
-        emit Value(cur.val, nxt.val);
+    function poke() external {
+
+        // Ensure a single SLOAD while avoiding solc's excessive bitmasking bureaucracy.
+        uint256 _zph;
+        uint256 _hop;
+        {
+            uint256 _stopped;  // block-scoping _stopped here saves a little gas
+            assembly {
+                let _slot1 := sload(1)
+                _stopped   := and(_slot1,         0xff  )
+                _hop       := and(shr(8, _slot1), 0xffff)
+                _zph       := shr(24, _slot1)
+            }
+
+            // When stopped, values are set to zero and should remain such; thus, disallow updating in that case.
+            require(_stopped == 0, "UNIV2LPOracle/is-stopped");
+        }
+
+        // Equivalent to requiring that pass() returns true.
+        // The logic is repeated instead of calling pass() to save gas
+        // (both by eliminating an internal call here, and allowing pass to be external).
+        require(block.timestamp >= _zph, "UNIV2LPOracle/not-passed");
+
+        uint128 _val = seek();
+        require(_val != 0, "UNIV2LPOracle/invalid-price");
+        Feed memory _cur = nxt;  // This memory value is used to save an SLOAD later.
+        cur = _cur;
+        nxt = Feed(_val, 1);
+
+        // The below is equivalent to:
+        //
+        //    zph = block.timestamp + hop
+        //
+        // but ensures no extra SLOADs are performed.
+        //
+        // Even if _hop = (2^16 - 1), the maximum possible value, add(timestamp(), _hop)
+        // will not overflow (even a 232 bit value) for a very long time.
+        //
+        // Also, we know stopped was zero, so there is no need to account for it explicitly here.
+        assembly {
+            sstore(
+                1,
+                add(
+                    // zph value starts 24 bits in
+                    shl(24, add(timestamp(), _hop)),
+
+                    // hop value starts 8 bits in
+                    shl(8, _hop)
+                )
+            )
+        }
+
+        // Equivalent to emitting Value(cur.val, nxt.val), but averts extra SLOADs.
+        emit Value(_cur.val, _val);
+
+        // Safe to terminate immediately since no postfix modifiers are applied.
+        assembly {
+            stop()
+        }
     }
 
     function peek() external view toll returns (bytes32,bool) {
