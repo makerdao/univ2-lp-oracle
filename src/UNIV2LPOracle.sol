@@ -97,7 +97,7 @@ contract UNIV2LPOracleFactory {
 contract UNIV2LPOracle {
 
     // --- Auth ---
-    mapping (address => uint256) public wards;                                       // Addresses with admin authority
+    mapping (address => uint256) public wards;                                    // Addresses with admin authority
     function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }  // Add admin
     function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }  // Remove admin
     modifier auth {
