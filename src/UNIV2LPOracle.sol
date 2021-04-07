@@ -138,13 +138,13 @@ contract UNIV2LPOracle {
     uint256 constant WAD = 10 ** 18;
 
     function add(uint256 _x, uint256 _y) internal pure returns (uint256 z) {
-        require((z = _x + _y) >= _x, "ds-math-add-overflow");
+        require((z = _x + _y) >= _x, "UNIV2LPOracle/add-overflow");
     }
     function sub(uint256 _x, uint256 _y) internal pure returns (uint256 z) {
-        require((z = _x - _y) <= _x, "ds-math-sub-underflow");
+        require((z = _x - _y) <= _x, "UNIV2LPOracle/sub-underflow");
     }
     function mul(uint256 _x, uint256 _y) internal pure returns (uint256 z) {
-        require(_y == 0 || (z = _x * _y) / _y == _x, "ds-math-mul-overflow");
+        require(_y == 0 || (z = _x * _y) / _y == _x, "UNIV2LPOracle/mul-overflow");
     }
 
     // FROM https://github.com/abdk-consulting/abdk-libraries-solidity/blob/16d7e1dd8628dfa2f88d5dadab731df7ada70bdd/ABDKMath64x64.sol#L687
