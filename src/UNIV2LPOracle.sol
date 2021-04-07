@@ -97,9 +97,9 @@ contract UNIV2LPOracleFactory {
 contract UNIV2LPOracle {
 
     // --- Auth ---
-    mapping (address => uint256) public wards;                                    // Addresses with admin authority
-    function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }  // Add admin
-    function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }  // Remove admin
+    mapping (address => uint256) public wards;                                       // Addresses with admin authority
+    function rely(address _usr) external auth { wards[_usr] = 1; emit Rely(_usr); }  // Add admin
+    function deny(address _usr) external auth { wards[_usr] = 0; emit Deny(_usr); }  // Remove admin
     modifier auth {
         require(wards[msg.sender] == 1, "UNIV2LPOracle/not-authorized");
         _;
@@ -137,21 +137,21 @@ contract UNIV2LPOracle {
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
 
-    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x + y) >= x, "ds-math-add-overflow");
+    function add(uint256 _x, uint256 _y) internal pure returns (uint256 z) {
+        require((z = _x + _y) >= _x, "ds-math-add-overflow");
     }
-    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x - y) <= x, "ds-math-sub-underflow");
+    function sub(uint256 _x, uint256 _y) internal pure returns (uint256 z) {
+        require((z = _x - _y) <= _x, "ds-math-sub-underflow");
     }
-    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require(y == 0 || (z = x * y) / y == x, "ds-math-mul-overflow");
+    function mul(uint256 _x, uint256 _y) internal pure returns (uint256 z) {
+        require(_y == 0 || (z = _x * _y) / _y == _x, "ds-math-mul-overflow");
     }
 
     // FROM https://github.com/abdk-consulting/abdk-libraries-solidity/blob/16d7e1dd8628dfa2f88d5dadab731df7ada70bdd/ABDKMath64x64.sol#L687
-    function sqrt (uint256 x) private pure returns (uint128) {
-        if (x == 0) return 0;
+    function sqrt (uint256 _x) private pure returns (uint128) {
+        if (_x == 0) return 0;
         else {
-            uint256 xx = x;
+            uint256 xx = _x;
             uint256 r = 1;
             if (xx >= 0x100000000000000000000000000000000) { xx >>= 128; r <<= 64; }
             if (xx >= 0x10000000000000000) { xx >>= 64; r <<= 32; }
@@ -160,14 +160,14 @@ contract UNIV2LPOracle {
             if (xx >= 0x100) { xx >>= 8; r <<= 4; }
             if (xx >= 0x10) { xx >>= 4; r <<= 2; }
             if (xx >= 0x8) { r <<= 1; }
-            r = (r + x / r) >> 1;
-            r = (r + x / r) >> 1;
-            r = (r + x / r) >> 1;
-            r = (r + x / r) >> 1;
-            r = (r + x / r) >> 1;
-            r = (r + x / r) >> 1;
-            r = (r + x / r) >> 1; // Seven iterations should be enough
-            uint256 r1 = x / r;
+            r = (r + _x / r) >> 1;
+            r = (r + _x / r) >> 1;
+            r = (r + _x / r) >> 1;
+            r = (r + _x / r) >> 1;
+            r = (r + _x / r) >> 1;
+            r = (r + _x / r) >> 1;
+            r = (r + _x / r) >> 1; // Seven iterations should be enough
+            uint256 r1 = _x / r;
             return uint128 (r < r1 ? r : r1);
         }
     }
@@ -220,16 +220,16 @@ contract UNIV2LPOracle {
         emit Step(_hop);
     }
 
-    function link(uint256 id, address orb) external auth {
-        require(orb != address(0), "UNIV2LPOracle/no-contract-0");
-        if(id == 0) {
-            orb0 = orb;
-        } else if (id == 1) {
-            orb1 = orb;
+    function link(uint256 _id, address _orb) external auth {
+        require(_orb != address(0), "UNIV2LPOracle/no-contract-0");
+        if(_id == 0) {
+            orb0 = _orb;
+        } else if (_id == 1) {
+            orb1 = _orb;
         } else {
             revert("UNIV2LPOracle/invalid-id");
         }
-        emit Link(id, orb);
+        emit Link(_id, _orb);
     }
 
     // For consistency with other oracles.
@@ -343,29 +343,29 @@ contract UNIV2LPOracle {
         return (bytes32(uint256(cur.val)));
     }
 
-    function kiss(address a) external auth {
-        require(a != address(0), "UNIV2LPOracle/no-contract-0");
-        bud[a] = 1;
-        emit Kiss(a);
+    function kiss(address _a) external auth {
+        require(_a != address(0), "UNIV2LPOracle/no-contract-0");
+        bud[_a] = 1;
+        emit Kiss(_a);
     }
 
-    function kiss(address[] calldata a) external auth {
-        for(uint256 i = 0; i < a.length; i++) {
-            require(a[i] != address(0), "UNIV2LPOracle/no-contract-0");
-            bud[a[i]] = 1;
-            emit Kiss(a[i]);
+    function kiss(address[] calldata _a) external auth {
+        for(uint256 i = 0; i < _a.length; i++) {
+            require(_a[i] != address(0), "UNIV2LPOracle/no-contract-0");
+            bud[_a[i]] = 1;
+            emit Kiss(_a[i]);
         }
     }
 
-    function diss(address a) external auth {
-        bud[a] = 0;
-        emit Diss(a);
+    function diss(address _a) external auth {
+        bud[_a] = 0;
+        emit Diss(_a);
     }
 
-    function diss(address[] calldata a) external auth {
-        for(uint256 i = 0; i < a.length; i++) {
-            bud[a[i]] = 0;
-            emit Diss(a[i]);
+    function diss(address[] calldata _a) external auth {
+        for(uint256 i = 0; i < _a.length; i++) {
+            bud[_a[i]] = 0;
+            emit Diss(_a[i]);
         }
     }
 }
