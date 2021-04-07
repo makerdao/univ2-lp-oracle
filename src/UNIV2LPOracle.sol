@@ -272,31 +272,31 @@ contract UNIV2LPOracle {
     function poke() external {
 
         // Ensure a single SLOAD while avoiding solc's excessive bitmasking bureaucracy.
-        uint256 _zph;
-        uint256 _hop;
+        uint256 zph_;
+        uint256 hop_;
         {
-            uint256 _stopped;  // block-scoping _stopped here saves a little gas
+            uint256 stopped_;  // block-scoping stopped_ here saves a little gas
             assembly {
-                let _slot1 := sload(1)
-                _stopped   := and(_slot1,         0xff  )
-                _hop       := and(shr(8, _slot1), 0xffff)
-                _zph       := shr(24, _slot1)
+                let slot1 := sload(1)
+                stopped_  := and(slot1,         0xff  )
+                hop_      := and(shr(8, slot1), 0xffff)
+                zph_      := shr(24, slot1)
             }
 
             // When stopped, values are set to zero and should remain such; thus, disallow updating in that case.
-            require(_stopped == 0, "UNIV2LPOracle/is-stopped");
+            require(stopped_ == 0, "UNIV2LPOracle/is-stopped");
         }
 
         // Equivalent to requiring that pass() returns true.
         // The logic is repeated instead of calling pass() to save gas
         // (both by eliminating an internal call here, and allowing pass to be external).
-        require(block.timestamp >= _zph, "UNIV2LPOracle/not-passed");
+        require(block.timestamp >= zph_, "UNIV2LPOracle/not-passed");
 
-        uint128 _val = seek();
-        require(_val != 0, "UNIV2LPOracle/invalid-price");
-        Feed memory _cur = nxt;  // This memory value is used to save an SLOAD later.
-        cur = _cur;
-        nxt = Feed(_val, 1);
+        uint128 val = seek();
+        require(val != 0, "UNIV2LPOracle/invalid-price");
+        Feed memory cur_ = nxt;  // This memory value is used to save an SLOAD later.
+        cur = cur_;
+        nxt = Feed(val, 1);
 
         // The below is equivalent to:
         //
@@ -313,16 +313,16 @@ contract UNIV2LPOracle {
                 1,
                 add(
                     // zph value starts 24 bits in
-                    shl(24, add(timestamp(), _hop)),
+                    shl(24, add(timestamp(), hop_)),
 
                     // hop value starts 8 bits in
-                    shl(8, _hop)
+                    shl(8, hop_)
                 )
             )
         }
 
         // Equivalent to emitting Value(cur.val, nxt.val), but averts extra SLOADs.
-        emit Value(_cur.val, _val);
+        emit Value(cur_.val, val);
 
         // Safe to terminate immediately since no postfix modifiers are applied.
         assembly {
