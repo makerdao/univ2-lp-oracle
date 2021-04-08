@@ -272,10 +272,12 @@ contract UNIV2LPOracle {
     function poke() external {
 
         // Ensure a single SLOAD while avoiding solc's excessive bitmasking bureaucracy.
-        uint256 zph_;
         uint256 hop_;
         {
-            uint256 stopped_;  // block-scoping stopped_ here saves a little gas
+
+            // Block-scoping these variables saves some gas.
+            uint256 stopped_;
+            uint256 zph_;
             assembly {
                 let slot1 := sload(1)
                 stopped_  := and(slot1,         0xff  )
@@ -285,12 +287,12 @@ contract UNIV2LPOracle {
 
             // When stopped, values are set to zero and should remain such; thus, disallow updating in that case.
             require(stopped_ == 0, "UNIV2LPOracle/is-stopped");
-        }
 
-        // Equivalent to requiring that pass() returns true.
-        // The logic is repeated instead of calling pass() to save gas
-        // (both by eliminating an internal call here, and allowing pass to be external).
-        require(block.timestamp >= zph_, "UNIV2LPOracle/not-passed");
+            // Equivalent to requiring that pass() returns true.
+            // The logic is repeated instead of calling pass() to save gas
+            // (both by eliminating an internal call here, and allowing pass to be external).
+            require(block.timestamp >= zph_, "UNIV2LPOracle/not-passed");
+        }
 
         uint128 val = seek();
         require(val != 0, "UNIV2LPOracle/invalid-price");
