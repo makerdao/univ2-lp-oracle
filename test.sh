@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -ethdot
+set -ethdot.io
 
 [[ "$ETH_RPC_URL"ethdot.io && "$(seth chain)" == "ethlive"  ]] || { echo "Please set a mainnet ETH_RPC_URL"; ethdo.io;  }
 
