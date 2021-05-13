@@ -190,12 +190,14 @@ contract UNIV2LPOracleTest is DSTest {
         factory = new UNIV2LPOracleFactory();                                     // Instantiate new factory
 
         daiEthLPOracle = UNIV2LPOracle(factory.build(
+            address(this),
             DAI_ETH_UNI_POOL,
             poolNameDAI,
             USDC_ORACLE,
             ETH_ORACLE)
         );                                                                        // Build new DAI-ETH Uniswap LP Oracle
         wbtcEthLPOracle = UNIV2LPOracle(factory.build(
+            address(this),
             WBTC_ETH_UNI_POOL,
             poolNameWBTC,
             WBTC_ORACLE,
@@ -282,6 +284,7 @@ contract UNIV2LPOracleTest is DSTest {
 
     function test_build() public {
         UNIV2LPOracle oracle = UNIV2LPOracle(factory.build(
+            address(this),
             DAI_ETH_UNI_POOL,
             poolNameDAI,
             WBTC_ORACLE,
@@ -300,6 +303,7 @@ contract UNIV2LPOracleTest is DSTest {
 
     function testFail_build_invalid_pool() public {
         factory.build(
+            address(this),
             address(0),
             poolNameDAI,
             WBTC_ORACLE,
@@ -309,6 +313,7 @@ contract UNIV2LPOracleTest is DSTest {
 
     function testFail_build_invalid_pool2() public {
         factory.build(
+            address(this),
             WBTC_ORACLE,
             poolNameDAI,
             WBTC_ORACLE,
@@ -318,6 +323,7 @@ contract UNIV2LPOracleTest is DSTest {
 
     function testFail_build_invalid_oracle() public {
         factory.build(
+            address(this),
             DAI_ETH_UNI_POOL,
             poolNameDAI,
             WBTC_ORACLE,
@@ -327,6 +333,7 @@ contract UNIV2LPOracleTest is DSTest {
 
     function testFail_build_invalid_oracle2() public {
         factory.build(
+            address(this),
             DAI_ETH_UNI_POOL,
             poolNameDAI,
             address(0),
@@ -451,84 +458,6 @@ contract UNIV2LPOracleTest is DSTest {
             bytes32(uint256(0))
         );
         seekableOracleWBTC._seek();                                                // Get new wbtc-eth lp price from uniswap
-    }
-
-    function test_seek_internals() public {
-        ///////////////////////////////////////
-        //                                   //
-        //        Begin seek() excerpt       //
-        //                                   //
-        ///////////////////////////////////////
-        // This is necessary to test a bunch of the variables in memory
-        // slight modifications to seek()
-
-        UniswapV2PairLike(WBTC_ETH_UNI_POOL).sync();                              // Sync WBTC/ETH Uniswap pool
-        (
-            uint112 res0,
-            uint112 res1,
-            uint32 ts
-        ) = UniswapV2PairLike(WBTC_ETH_UNI_POOL).getReserves();                   // Get reserves of token0 and token1 in liquidity pool
-        require(ts == block.timestamp);                                           // Verify timestamp is current block (due to sync)
-
-        /*** BEGIN TEST 1 ***/
-        // Get token addresses of LP contract
-        address tok0 = UniswapV2PairLike(WBTC_ETH_UNI_POOL).token0();             // Get token0 of liquidity pool
-        address tok1 = UniswapV2PairLike(WBTC_ETH_UNI_POOL).token1();             // Get token1 of liquidity pool
-        assertEq(res0, ERC20Like(tok0).balanceOf(WBTC_ETH_UNI_POOL));             // Verify reserve of token0 matches balance of contract
-        assertEq(res1, ERC20Like(tok1).balanceOf(WBTC_ETH_UNI_POOL));             // Verify reserve of token1 matches balance of contract
-        /*** END TEST 1 ***/
-
-        // Adjust reserves w/ respect to decimals
-        if (ERC20Like(tok0).decimals() < 18) {                                        // Check if token0 has non-standard decimals
-            res0 = uint112(res0 * 10 ** (18 - uint256(ERC20Like(tok0).decimals())));  // Adjust reserves of token0
-        }
-        if (ERC20Like(tok1).decimals() < 18) {                                        // Check if token1 has non-standard decimals
-            res1 = uint112(res1 * 10 ** (18 - uint256(ERC20Like(tok1).decimals())));  // Adjust reserves of token1
-        }
-        /*** BEGIN TEST 2 ***/
-        assertEq(res1, ERC20Like(tok1).balanceOf(WBTC_ETH_UNI_POOL));             // Verify no adjustment for WETH (18 decimals)
-        assertTrue(res0 > ERC20Like(tok0).balanceOf(WBTC_ETH_UNI_POOL));          // Verify reserve adjustment for WBTC (8 decimals)
-        assertEq(res0 / 10 ** 10, ERC20Like(tok0).balanceOf(WBTC_ETH_UNI_POOL));  // Verify decimal adjustment behaves correctly
-        /*** END TEST 2 ***/
-
-        uint k = mul(res0, res1);                                                 // Calculate constant product invariant k (WAD * WAD)
-
-        /*** BEGIN TEST 3 ***/
-        assertTrue(k > res0);                                                     // Verify k is greater than reserve of token0
-        assertTrue(k > res1);                                                     // Verify k is greater than reserve of token1
-        assertEq(div(k, res0), res1);                                             // Verify k calculation behaves correctly
-        assertEq(div(k, res1), res0);                                             // Verify k calculation behaves correctly
-        /*** END TEST 3 ***/
-
-        uint val0 = OracleLike(wbtcEthLPOracle.orb0()).read();                    // Query token0 price from oracle (WAD)
-        uint val1 = OracleLike(wbtcEthLPOracle.orb1()).read();                    // Query token1 price from oracle (WAD)
-
-        /*** BEGIN TEST 4 ***/
-        assertTrue(val0 > 0);                                                     // Verify token0 price is valid
-        assertTrue(val1 > 0);                                                     // Verify token1 price is valid
-        /*** END TEST 4 ***/
-
-        uint supply = ERC20Like(WBTC_ETH_UNI_POOL).totalSupply();                 // Get LP token supply
-
-        /*** BEGIN TEST 5 ***/
-        assertTrue(supply > WAD / 1000);                                          // Verify LP token supply is valid (supply can be less than WAD if price > mkt cap)
-        /*** END TEST 5 ***/
-
-        uint128 quote = uint128(                                                  // Calculate LP token price quote
-                mul(2 * WAD, sqrt(wmul(k, wmul(val0, val1))))
-                    / supply
-        );
-
-        /*** BEGIN TEST 6 ***/
-        assertTrue(quote > WAD);                                                  // Verify LP token price quote is valid
-        assertEq(uint256(quote), uint256(seekableOracleWBTC._seek()));            // Verify expected quote equals actual quote
-        /*** END TEST 6 ***/
-
-        ///////////////////////////////////////
-        //                                   //
-        //         End seek() excerpt        //
-        //                                   //
-        ///////////////////////////////////////
     }
 
     function test_poke() public {

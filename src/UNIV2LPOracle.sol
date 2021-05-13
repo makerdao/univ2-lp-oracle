@@ -93,11 +93,17 @@ contract UNIV2LPOracleFactory {
     event NewUNIV2LPOracle(address sender, address orcl, bytes32 wat, address indexed tok0, address indexed tok1, address orb0, address orb1);
 
     // Create new Uniswap V2 LP Token Oracle instance
-    function build(address _src, bytes32 _wat, address _orb0, address _orb1) public returns (address orcl) {
+    function build(
+        address _owner,
+        address _src,
+        bytes32 _wat,
+        address _orb0,
+        address _orb1
+        ) public returns (address orcl) {
         address tok0 = UniswapV2PairLike(_src).token0();
         address tok1 = UniswapV2PairLike(_src).token1();
         orcl = address(new UNIV2LPOracle(_src, _wat, _orb0, _orb1));
-        UNIV2LPOracle(orcl).rely(msg.sender);
+        UNIV2LPOracle(orcl).rely(_owner);
         UNIV2LPOracle(orcl).deny(address(this));
         isOracle[orcl] = true;
         emit NewUNIV2LPOracle(msg.sender, orcl, _wat, tok0, tok1, _orb0, _orb1);
