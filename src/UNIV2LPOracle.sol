@@ -23,36 +23,45 @@
 //                                                   //
 ///////////////////////////////////////////////////////
 
-// Two-asset constant product pools, neglecting fees, satisfy (before and after trades):
+// A naïve approach to calculate the price of LP tokens, assuming the protocol
+// fee is zero, is to compute the price of the assets locked in its liquidity
+// pool, and divide it by the total amount of LP tokens issued:
 //
-// r_0 * r_1 = k                                    (1)
+// (p_0 * r_0 + p_1 * r_1) / LP_supply              (1)
 //
-// where r_0 and r_1 are the reserves of the two tokens held by the pool.
-// The price of LP tokens (i.e. pool shares) needs to be evaluated based on 
-// reserve values r_0 and r_1 that cannot be arbitraged, i.e. values that
-// give the two halves of the pool equal economic value:
+// where r_0 and r_1 are the reserves of the two tokens held by the pool, and
+// p_0 and p_1 are their respective prices in some reference unit of account.
+//
+// However, the price of LP tokens (i.e. pool shares) needs to be evaluated
+// based on reserve values r_0 and r_1 that cannot be arbitraged, i.e. values
+// that give the two halves of the pool equal economic value:
 //
 // r_0 * p_0 = r_1 * p_1                            (2)
 // 
-// (p_i is the price of pool asset i in some reference unit of account).
-// Using (1) and (2) we can compute the arbitrage-free reserve values in a manner
-// that depends only on k (which can be derived from the current reserve balances,
-// even if they are far from equilibrium) and market prices p_i obtained from a trusted source:
+// Furthermore, two-asset constant product pools, neglecting fees, satisfy
+// (before and after trades):
 //
-// R_0 = sqrt(k * p_1 / p_0)                        (3)
+// r_0 * r_1 = k                                    (3)
+//
+// Using (2) and (3) we can compute R_i, the arbitrage-free reserve values, in a
+// manner that depends only on k (which can be derived from the current reserve
+// balances, even if they are far from equilibrium) and market prices p_i
+// obtained from a trusted source:
+//
+// R_0 = sqrt(k * p_1 / p_0)                        (4)
 //   and
-// R_1 = sqrt(k * p_0 / p_1)                        (4)
+// R_1 = sqrt(k * p_0 / p_1)                        (5)
 //
-// The value of an LP token is then, combining (3) and (4):
+// The value of an LP token is then, replacing (4) and (5) in (1):
 //
 // (p_0 * R_0 + p_1 * R_1) / LP_supply
-//     = 2 * sqrt(k * p_0 * p_1) / LP_supply        (5)
+//     = 2 * sqrt(k * p_0 * p_1) / LP_supply        (6)
 //
-// (5) can be re-expressed in terms of the current pool reserves r_0 and r_1:
+// k can be re-expressed in terms of the current pool reserves r_0 and r_1:
 //
-// 2 * sqrt((r_0 * p_0) * (r_1 * p_1)) / LP_supply  (6)
+// 2 * sqrt((r_0 * p_0) * (r_1 * p_1)) / LP_supply  (7)
 //
-// The structure of (6) is well-suited for use in fixed-point EVM calculations, as the
+// The structure of (7) is well-suited for use in fixed-point EVM calculations, as the
 // terms (r_0 * p_0) and (r_1 * p_1), being the values of the reserves in the reference unit,
 // should have reasonably-bounded sizes. This reduces the likelihood of overflow due to
 // tokens with very low prices but large total supplies.
@@ -81,16 +90,23 @@ contract UNIV2LPOracleFactory {
 
     mapping(address => bool) public isOracle;
 
-    event NewUNIV2LPOracle(address sender, address orcl, bytes32 wat, address indexed tok0, address indexed tok1, address orb0, address orb1);
+    event NewUNIV2LPOracle(address owner, address orcl, bytes32 wat, address indexed tok0, address indexed tok1, address orb0, address orb1);
 
     // Create new Uniswap V2 LP Token Oracle instance
-    function build(address _src, bytes32 _wat, address _orb0, address _orb1) public returns (address orcl) {
+    function build(
+        address _owner,
+        address _src,
+        bytes32 _wat,
+        address _orb0,
+        address _orb1
+        ) public returns (address orcl) {
         address tok0 = UniswapV2PairLike(_src).token0();
         address tok1 = UniswapV2PairLike(_src).token1();
         orcl = address(new UNIV2LPOracle(_src, _wat, _orb0, _orb1));
-        UNIV2LPOracle(orcl).rely(msg.sender);
+        UNIV2LPOracle(orcl).rely(_owner);
+        UNIV2LPOracle(orcl).deny(address(this));
         isOracle[orcl] = true;
-        emit NewUNIV2LPOracle(msg.sender, orcl, _wat, tok0, tok1, _orb0, _orb1);
+        emit NewUNIV2LPOracle(_owner, orcl, _wat, tok0, tok1, _orb0, _orb1);
     }
 }
 

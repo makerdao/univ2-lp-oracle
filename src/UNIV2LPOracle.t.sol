@@ -51,6 +51,9 @@ contract UNIV2LPOracleTest is DSTest {
     function div(uint x, uint y) internal pure returns (uint z) {
         require(y > 0 && (z = x / y) * y == x, "ds-math-divide-by-zero");
     }
+    function divup(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        z = add(x, sub(y, 1)) / y;
+    }
     function wmul(uint x, uint y) internal pure returns (uint z) {
         z = add(mul(x, y), WAD / 2) / WAD;
     }
@@ -187,12 +190,14 @@ contract UNIV2LPOracleTest is DSTest {
         factory = new UNIV2LPOracleFactory();                                     // Instantiate new factory
 
         daiEthLPOracle = UNIV2LPOracle(factory.build(
+            address(this),
             DAI_ETH_UNI_POOL,
             poolNameDAI,
             USDC_ORACLE,
             ETH_ORACLE)
         );                                                                        // Build new DAI-ETH Uniswap LP Oracle
         wbtcEthLPOracle = UNIV2LPOracle(factory.build(
+            address(this),
             WBTC_ETH_UNI_POOL,
             poolNameWBTC,
             WBTC_ORACLE,
@@ -241,8 +246,8 @@ contract UNIV2LPOracleTest is DSTest {
         hevm.store(
             DAI,
             keccak256(abi.encode(address(this), uint256(2))),
-            bytes32(uint(10_000 ether))
-        );                                                                        // Mint 10,000 DAI
+            bytes32(uint(50_000_000 ether))
+        );                                                                        // Mint 50m DAI
         IERC20(DAI).approve(UNISWAP_ROUTER_02, uint(-1));                         // Approve DAI to trade on Uniswap
 
         hevm.store(
@@ -261,13 +266,13 @@ contract UNIV2LPOracleTest is DSTest {
         (val, has) = OSMLike(WBTC_ORACLE).peek();                                 // Query WBTC/USD price from WBTC Oracle
         wbtcPrice = uint256(val);                                                 // Cast WBTC/USD price as uint256
 
-        // Mint $10k of WBTC
-        wbtcMintAmt = 10_000 ether * 1E8 / wbtcPrice;                             // Calculate amount of WBTC worth $10,000
+        // Mint $50m of WBTC
+        wbtcMintAmt = 50_000_000 ether * 1E8 / wbtcPrice;                             // Calculate amount of WBTC worth $50m
         hevm.store(
             WBTC,
             keccak256(abi.encode(address(this), uint256(0))),
             bytes32(wbtcMintAmt)
-        );                                                                        // Mint $10,000 worth of WBTC
+        );                                                                        // Mint $50m worth of WBTC
         IERC20(WBTC).approve(UNISWAP_ROUTER_02, uint(-1));                        // Approve WBTC to trade on Uniswap
     }
 
@@ -279,22 +284,26 @@ contract UNIV2LPOracleTest is DSTest {
 
     function test_build() public {
         UNIV2LPOracle oracle = UNIV2LPOracle(factory.build(
+            address(this),
             DAI_ETH_UNI_POOL,
             poolNameDAI,
             WBTC_ORACLE,
             ETH_ORACLE)
         );                                                  // Deploy new LP oracle
-        assertTrue(address(daiEthLPOracle) != address(0));  // Verify oracle deployed successfully
+        assertTrue(address(oracle) != address(0));          // Verify oracle deployed successfully
         assertEq(oracle.wards(address(this)), 1);           // Verify caller is owner
+        assertEq(oracle.wards(address(factory)), 0);        // Vérify factory is not owner
         assertEq(oracle.src(), DAI_ETH_UNI_POOL);           // Verify uni pool is source
         assertEq(oracle.orb0(), WBTC_ORACLE);               // Verify oracle configured correctly
         assertEq(oracle.orb1(), ETH_ORACLE);                // Verify oracle configured correctly
+        assertEq(oracle.wat(), poolNameDAI);                // Verify name is set correctly
         assertEq(uint256(oracle.stopped()), 0);             // Verify contract is active
         assertTrue(factory.isOracle(address(oracle)));      // Verify factory recorded oracle
     }
 
     function testFail_build_invalid_pool() public {
         factory.build(
+            address(this),
             address(0),
             poolNameDAI,
             WBTC_ORACLE,
@@ -302,8 +311,19 @@ contract UNIV2LPOracleTest is DSTest {
         );                                                  // Attempt to deploy new LP oracle
     }
 
+    function testFail_build_invalid_pool2() public {
+        factory.build(
+            address(this),
+            WBTC_ORACLE,
+            poolNameDAI,
+            WBTC_ORACLE,
+            ETH_ORACLE
+        );                                                  // Attempt to deploy with invalid pool
+    }
+
     function testFail_build_invalid_oracle() public {
         factory.build(
+            address(this),
             DAI_ETH_UNI_POOL,
             poolNameDAI,
             WBTC_ORACLE,
@@ -313,6 +333,7 @@ contract UNIV2LPOracleTest is DSTest {
 
     function testFail_build_invalid_oracle2() public {
         factory.build(
+            address(this),
             DAI_ETH_UNI_POOL,
             poolNameDAI,
             address(0),
@@ -327,7 +348,7 @@ contract UNIV2LPOracleTest is DSTest {
     ///////////////////////////////////////////////////////
 
     // Max integer that can be converted to a WAD
-    uint256 constant MAX_WAD_VAL = ((2 ** 256 - 1) / WAD);
+    uint256 constant MAX_WAD_VAL = (2 ** 256 - 1) / WAD;
 
     // Passed 10 rounds of fuzzing with 10,000 test cases
     function test_compare_sqrt(uint256 exp) public {
@@ -352,22 +373,32 @@ contract UNIV2LPOracleTest is DSTest {
         log_named_uint("Babylonian sqrt gas usage: ", babylGas);
         log_named_uint("ABDK sqrt gas usage: ", altGas);
 
-        // When input is 0, ABDK method costs 1 gas more than babylonian
-        assertTrue(altGas < babylGas || altGas - babylGas <= 1);
+        assertTrue(altGas < babylGas);
 
         // Use WADS here for the convenience of precision in cases where babyl % altGas != 0
-        // And to avoid div-by-zero when babylCost / ABDK method < 1 but > 0
-        assertTrue(wdiv(mul(babylGas, WAD), mul(altGas, WAD)) > mul(4, WAD) || exp == 0);
+        assertTrue(wdiv(mul(babylGas, WAD), mul(altGas, WAD)) > mul(4, WAD));
 
         // Since we have confidence in Babylonian method, we simply check for equivalence
         assertEq(rootVal, rootAltVal);
     }
 
-    function test_oracle_constructor() public {
+    function test_dai_oracle_constructor() public {
         assertEq(daiEthLPOracle.src(), DAI_ETH_UNI_POOL);  // Verify source is DAI-ETH pool
         assertEq(daiEthLPOracle.orb0(), USDC_ORACLE);      // Verify token 0 oracle is USDC oracle
         assertEq(daiEthLPOracle.orb1(), ETH_ORACLE);       // Verify token 1 oracle is ETH oracle
+        assertEq(daiEthLPOracle.wat(), poolNameDAI);       // Verify name
         assertEq(daiEthLPOracle.wards(address(this)), 1);  // Verify owner
+        assertEq(daiEthLPOracle.wards(address(factory)), 0);
+        assertEq(uint256(daiEthLPOracle.stopped()), 0);    // Verify contract active
+    }
+
+    function test_wbtc_oracle_constructor() public {
+        assertEq(wbtcEthLPOracle.src(), WBTC_ETH_UNI_POOL);// Verify source is WBTC-ETH pool
+        assertEq(wbtcEthLPOracle.orb0(), WBTC_ORACLE);     // Verify token 0 oracle is WBTC oracle
+        assertEq(wbtcEthLPOracle.orb1(), ETH_ORACLE);      // Verify token 1 oracle is ETH oracle
+        assertEq(wbtcEthLPOracle.wat(), poolNameWBTC);     // Verify name
+        assertEq(wbtcEthLPOracle.wards(address(this)), 1); // Verify owner
+        assertEq(wbtcEthLPOracle.wards(address(factory)), 0);
         assertEq(uint256(daiEthLPOracle.stopped()), 0);    // Verify contract active
     }
 
@@ -378,15 +409,17 @@ contract UNIV2LPOracleTest is DSTest {
         log_named_uint("dai seek gas", preGas - postGas);
         assertTrue(lpTokenPrice128 > 0);                                          // Verify price was set
         uint256 lpTokenPrice = uint256(lpTokenPrice128);
-        uint256 expectedPrice =
+        uint256 expectedPriceNaive =
             add(mul(ethPrice, IERC20(WETH).balanceOf(DAI_ETH_UNI_POOL)),
                 mul(WAD,      IERC20(DAI).balanceOf(DAI_ETH_UNI_POOL)))
             / IERC20(DAI_ETH_UNI_POOL).totalSupply();                             // assumes protocol fee is 0
-        uint256 diff =
-            lpTokenPrice  > expectedPrice ?
-            lpTokenPrice  - expectedPrice :
-            expectedPrice - lpTokenPrice;
-        assertTrue((WAD * diff) / expectedPrice < WAD / 1000);                    // 0.1% tolerance
+        uint256 diff = expectedPriceNaive - lpTokenPrice;
+        assertTrue((WAD * diff) / expectedPriceNaive < WAD / 1000);               // 0.1% tolerance
+        uint256 expectedPriceExact = mul(2 * WAD, sqrt(mul(
+            wmul(ethPrice, IERC20(WETH).balanceOf(DAI_ETH_UNI_POOL)),
+            wmul(WAD, IERC20(DAI).balanceOf(DAI_ETH_UNI_POOL))
+        ))) / IERC20(DAI_ETH_UNI_POOL).totalSupply();
+        assertEq(lpTokenPrice, expectedPriceExact);
     }
 
     function test_seek_wbtc() public {
@@ -396,18 +429,20 @@ contract UNIV2LPOracleTest is DSTest {
         log_named_uint("wbtc seek gas", preGas - postGas);
         assertTrue(lpTokenPrice128 > 0);                                          // Verify price was set
         uint256 lpTokenPrice = uint256(lpTokenPrice128);
-        uint256 expectedPrice =
+        uint256 expectedPriceNaive =
             add(mul(ethPrice,  IERC20(WETH).balanceOf(WBTC_ETH_UNI_POOL)),
                 mul(wbtcPrice, IERC20(WBTC).balanceOf(WBTC_ETH_UNI_POOL) * 10**10))
             / IERC20(WBTC_ETH_UNI_POOL).totalSupply();                            // assumes protocol fee is 0
-        uint256 diff =
-            lpTokenPrice  > expectedPrice ?
-            lpTokenPrice  - expectedPrice :
-            expectedPrice - lpTokenPrice;
-        assertTrue((WAD * diff) / expectedPrice < WAD / 1000);                    // 0.1% tolerance
+        uint256 diff = expectedPriceNaive - lpTokenPrice;
+        assertTrue((WAD * diff) / expectedPriceNaive < WAD / 1000);               // 0.1% tolerance
+        uint256 expectedPriceExact = mul(2 * WAD, sqrt(mul(
+            wmul(ethPrice, IERC20(WETH).balanceOf(WBTC_ETH_UNI_POOL)),
+            mul(wbtcPrice, IERC20(WBTC).balanceOf(WBTC_ETH_UNI_POOL)) / 10**8
+        ))) / IERC20(WBTC_ETH_UNI_POOL).totalSupply();
+        assertEq(lpTokenPrice, expectedPriceExact);
     }
 
-    function testFail_seek_zero_LPToken_supply() public {
+    function testFail_seek_zero_LPToken_supply_dai() public {
         hevm.store(
             DAI_ETH_UNI_POOL,
             0,                                                                    // totalSupply
@@ -416,81 +451,13 @@ contract UNIV2LPOracleTest is DSTest {
         seekableOracleDAI._seek();                                                // Get new dai-eth lp price from uniswap
     }
 
-    function test_seek_internals() public {
-        ///////////////////////////////////////
-        //                                   //
-        //        Begin seek() excerpt       //
-        //                                   //
-        ///////////////////////////////////////
-        // This is necessary to test a bunch of the variables in memory
-        // slight modifications to seek()
-
-        UniswapV2PairLike(WBTC_ETH_UNI_POOL).sync();                              // Sync WBTC/ETH Uniswap pool
-        (
-            uint112 res0,
-            uint112 res1,
-            uint32 ts
-        ) = UniswapV2PairLike(WBTC_ETH_UNI_POOL).getReserves();                   // Get reserves of token0 and token1 in liquidity pool
-        require(ts == block.timestamp);                                           // Verify timestamp is current block (due to sync)
-
-        /*** BEGIN TEST 1 ***/
-        // Get token addresses of LP contract
-        address tok0 = UniswapV2PairLike(WBTC_ETH_UNI_POOL).token0();             // Get token0 of liquidity pool
-        address tok1 = UniswapV2PairLike(WBTC_ETH_UNI_POOL).token1();             // Get token1 of liquidity pool
-        assertEq(res0, ERC20Like(tok0).balanceOf(WBTC_ETH_UNI_POOL));             // Verify reserve of token0 matches balance of contract
-        assertEq(res1, ERC20Like(tok1).balanceOf(WBTC_ETH_UNI_POOL));             // Verify reserve of token1 matches balance of contract
-        /*** END TEST 1 ***/
-
-        // Adjust reserves w/ respect to decimals
-        if (ERC20Like(tok0).decimals() < 18) {                                        // Check if token0 has non-standard decimals
-            res0 = uint112(res0 * 10 ** (18 - uint256(ERC20Like(tok0).decimals())));  // Adjust reserves of token0
-        }
-        if (ERC20Like(tok1).decimals() < 18) {                                        // Check if token1 has non-standard decimals
-            res1 = uint112(res1 * 10 ** (18 - uint256(ERC20Like(tok1).decimals())));  // Adjust reserves of token1
-        }
-        /*** BEGIN TEST 2 ***/
-        assertEq(res1, ERC20Like(tok1).balanceOf(WBTC_ETH_UNI_POOL));             // Verify no adjustment for WETH (18 decimals)
-        assertTrue(res0 > ERC20Like(tok0).balanceOf(WBTC_ETH_UNI_POOL));          // Verify reserve adjustment for  WBTC (6 decimals)
-        assertEq(res0 / 10 ** 10, ERC20Like(tok0).balanceOf(WBTC_ETH_UNI_POOL));  // Verify decimal adjustment behaves correctly
-        /*** END TEST 2 ***/
-
-        uint k = mul(res0, res1);                                                 // Calculate constant product invariant k (WAD * WAD)
-
-        /*** BEGIN TEST 3 ***/
-        assertTrue(k > res0);                                                     // Verify k is greater than reserve of token0
-        assertTrue(k > res1);                                                     // Verify k is greater than reserve of token1
-        assertEq(div(k, res0), res1);                                             // Verify k calculation behaves correctly
-        assertEq(div(k, res1), res0);                                             // Verify k calculation behaves correctly
-        /*** END TEST 3 ***/
-
-        uint val0 = OracleLike(wbtcEthLPOracle.orb0()).read();                    // Query token0 price from oracle (WAD)
-        uint val1 = OracleLike(wbtcEthLPOracle.orb1()).read();                    // Query token1 price from oracle (WAD)
-
-        /*** BEGIN TEST 4 ***/
-        assertTrue(val0 > 0);                                                     // Verify token0 price is valid
-        assertTrue(val1 > 0);                                                     // Verify token1 price is valid
-        /*** END TEST 4 ***/
-
-        uint supply = ERC20Like(WBTC_ETH_UNI_POOL).totalSupply();                 // Get LP token supply
-
-        /*** BEGIN TEST 5 ***/
-        assertTrue(supply > WAD / 1000);                                          // Verify LP token supply is valid (supply can be less than WAD if price > mkt cap)
-        /*** END TEST 5 ***/
-
-        uint128 quote = uint128(                                                  // Calculate LP token price quote
-                mul(2 * WAD, sqrt(wmul(k, wmul(val0, val1))))
-                    / supply
+    function testFail_seek_zero_LPToken_supply_wbtc() public {
+        hevm.store(
+            WBTC_ETH_UNI_POOL,
+            0,                                                                    // totalSupply
+            bytes32(uint256(0))
         );
-
-        /*** BEGIN TEST 6 ***/
-        assertTrue(quote > WAD);                                                  // Verify LP token price quote is valid
-        /*** END TEST 6 ***/
-
-        ///////////////////////////////////////
-        //                                   //
-        //         End seek() excerpt        //
-        //                                   //
-        ///////////////////////////////////////
+        seekableOracleWBTC._seek();                                                // Get new wbtc-eth lp price from uniswap
     }
 
     function test_poke() public {
@@ -514,14 +481,15 @@ contract UNIV2LPOracleTest is DSTest {
         (nxtVal, nxtHas) = seekableOracleDAI._nxt();                  // Get queued value
         assertTrue(nxtVal > 0);                                       // Verify oracle has non-zero queued value
         assertEq(uint256(nxtHas), 1);                                 // Verify oracle has value
+        assertEq(uint256(nxtVal), uint256(seekableOracleDAI._seek()));// Verify value is correct
 
-        uint256 hop = seekableOracleDAI.hop();
-        assertEq(uint256(seekableOracleDAI.zph()), block.timestamp + hop);  // Verify timestamp is now + hop
-        assertEq(seekableOracleDAI.zzz() + hop, seekableOracleDAI.zph());   // Verify zzz is zhp minus hop
+        assertEq(uint256(seekableOracleDAI.zph()), block.timestamp + 1 hours);  // Verify zph is now + hop
+        assertEq(seekableOracleDAI.zzz() + 1 hours, seekableOracleDAI.zph());   // Verify zzz is zhp minus hop
     }
 
     function testFail_double_poke() public {
         daiEthLPOracle.poke();                                        // Poke oracle
+        hevm.warp(block.timestamp + 1 hours - 1);
         daiEthLPOracle.poke();                                        // Poke oracle again w/o hop time elapsed
     }
 
@@ -542,7 +510,9 @@ contract UNIV2LPOracleTest is DSTest {
     function test_pass() public {
         assertTrue(daiEthLPOracle.pass());                           // Verify time interval `hop`has elapsed
         daiEthLPOracle.poke();                                       // Poke oracle
-        hevm.warp(add(daiEthLPOracle.zzz(), daiEthLPOracle.hop()));  // Time travel into the future
+        hevm.warp(block.timestamp + 1 hours - 1);                    // Time travel into the future
+        assertTrue(!daiEthLPOracle.pass());
+        hevm.warp(block.timestamp + 1);
         assertTrue(daiEthLPOracle.pass());                           // Verify time interval `hop` has elapsed
     }
 
@@ -562,11 +532,24 @@ contract UNIV2LPOracleTest is DSTest {
         log_named_uint("poke gas", diffGas);
     }
 
+    // If price remain the same, poke should cost much less
+    function test_gas_poke_same_price() public {
+        require(daiEthLPOracle.pass());
+
+        uint256 preGas1 = gasleft();
+        daiEthLPOracle.poke();
+        uint256 diffGas1 = preGas1 - gasleft();
+        log_named_uint("poke 1 gas", diffGas1);
+        uint256 preGas2 = gasleft();
+        hevm.warp(block.timestamp + 1 hours);
+        uint256 diffGas2 = preGas2 - gasleft();
+        log_named_uint("poke 2 gas", diffGas2);
+        assertLt(diffGas2, 400);
+    }
+
     function testFail_whitelist_peep() public {
         daiEthLPOracle.poke();                                       // Poke oracle
-        (bytes32 val, bool has) = daiEthLPOracle.peep();             // Peep oracle price without caller being whitelisted
-        assertTrue(has);                                             // Verify oracle has value
-        assertTrue(val != bytes32(0));                               // Verify peep returned value
+        daiEthLPOracle.peep();                                       // Peep oracle price without caller being whitelisted
     }
 
     function test_whitelist_peep() public {
@@ -581,9 +564,7 @@ contract UNIV2LPOracleTest is DSTest {
         daiEthLPOracle.poke();                                       // Poke oracle
         hevm.warp(add(daiEthLPOracle.zzz(), daiEthLPOracle.hop()));  // Time travel into the future
         daiEthLPOracle.poke();                                       // Poke oracle again
-        (bytes32 val, bool has) = daiEthLPOracle.peek();             // Peek oracle price without caller being whitelisted
-        assertTrue(has);                                             // Verify oracle has value
-        assertTrue(val > bytes32(0));                                // Verify peek returned value
+        daiEthLPOracle.peek();                                       // Peek oracle price without caller being whitelisted
     }
 
     function test_whitelist_peek() public {
@@ -591,9 +572,9 @@ contract UNIV2LPOracleTest is DSTest {
         hevm.warp(add(daiEthLPOracle.zzz(), daiEthLPOracle.hop()));  // Time travel into the future
         daiEthLPOracle.poke();                                       // Poke oracle again
         daiEthLPOracle.kiss(address(this));                          // Whitelist caller
-        (bytes32 val, bool has) = daiEthLPOracle.peek();             // Peek oracle price without caller being whitelisted
+        (bytes32 val, bool has) = daiEthLPOracle.peek();             // Peek oracle price
         assertTrue(has);                                             // Verify oracle has value
-        assertTrue(val != bytes32(0));                               // Verify peep returned valid value
+        assertTrue(val != bytes32(0));                               // Verify peek returned valid value
     }
 
     function test_whitelist_read() public {
@@ -640,11 +621,11 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_link() public {
-        assertTrue(daiEthLPOracle.orb0() != TUSD_ORACLE);
+        assertEq(daiEthLPOracle.orb0(), USDC_ORACLE);
         daiEthLPOracle.link(0, TUSD_ORACLE);                        // Replace DAI-ETH LP Oracle orb0 w/ TUSD Oracle
         assertEq(daiEthLPOracle.orb0(), TUSD_ORACLE);               // Verify that DAI-ETH LP Oracle orb0 is TUSD Oracle
 
-        assertTrue(daiEthLPOracle.orb1() != TUSD_ORACLE);
+        assertEq(daiEthLPOracle.orb1(), ETH_ORACLE);
         daiEthLPOracle.link(1, TUSD_ORACLE);                        // Replace DAI-ETH LP Oracle orb1 w/ TUSD Oracle
         assertEq(daiEthLPOracle.orb1(), TUSD_ORACLE);               // Verify that DAI-ETH LP Oracle orb1 is TUSD Oracle
     }
@@ -654,7 +635,7 @@ contract UNIV2LPOracleTest is DSTest {
         daiEthLPOracle.kiss(address(this));                         // Whitelist caller on DAI-ETH LP Oracle
         (bytes32 val1,) = daiEthLPOracle.peep();                    // Read queued price from DAI-ETH LP Oracle
         daiEthLPOracle.link(0, TUSD_ORACLE);                        // Change DAI-ETH LP Oracle orb0 to TUSD Oracle
-        hevm.warp(now + 3600);                                      // Time travel 1 hour into the future
+        hevm.warp(block.timestamp + 1 hours);                       // Time travel 1 hour into the future
         daiEthLPOracle.poke();                                      // Poke DAI-ETH LP Oracle
         (bytes32 val2,) = daiEthLPOracle.peep();                    // Read new queued price from DAI-ETH LP Oracle
         assertEq(val1, val2);                                       // Verify queued prices are the same before and after Oracle swap
@@ -668,104 +649,119 @@ contract UNIV2LPOracleTest is DSTest {
         daiEthLPOracle.link(2, TUSD_ORACLE);                        // The id parameter should be < 2
     }
 
-    function test_eth_dai_price_change() public {
+    function checkPriceDaiEth(uint256 lpTokenPrice) private {
+        uint256 expectedPrice = mul(2 * WAD, sqrt(mul(
+            wmul(ethPrice, IERC20(WETH).balanceOf(DAI_ETH_UNI_POOL)),
+            wmul(WAD, IERC20(DAI).balanceOf(DAI_ETH_UNI_POOL))
+        ))) / IERC20(DAI_ETH_UNI_POOL).totalSupply();
+        assertEq(lpTokenPrice, expectedPrice);
+    }
+
+    function test_eth_dai_price_change(uint128 fraction) public {
+        if (fraction == 0) return;
+        uint256 max = 2 ** 128;
         daiEthLPOracle.poke();                                      // Poke DAI-ETH LP Oracle
         daiEthLPOracle.kiss(address(this));                         // Whitelist caller on DAI-ETH LP Oracle
         (bytes32 val, bool has) = daiEthLPOracle.peep();            // Query queued price of DAI-ETH LP Oracle
         uint256 firstVal = uint256(val);                            // Cast queued price as uint256
 
-        assertTrue(firstVal < 100 ether && firstVal > 50 ether);    // 57327394135985707908 at time of test
+        checkPriceDaiEth(firstVal);
         assertTrue(has);                                            // Verify Oracle has valid value
 
-        assertEq(IERC20(DAI).balanceOf(address(this)), 10_000 ether);   // Verify caller has 10,000 DAI
+        assertEq(IERC20(DAI).balanceOf(address(this)), 50_000_000 ether);   // Verify caller has 50m DAI
         address[] memory path = new address[](2);                       // Create path param
         path[0] = DAI;                                                  // Trade from DAI
         path[1] = WETH;                                                 // Trade to WETH
         uint[] memory amounts = uniswap.swapExactTokensForTokens(
-            IERC20(DAI).balanceOf(address(this)), 0, path, address(this), now); // Trade 10,000 DAI for WETH
+            IERC20(DAI).balanceOf(address(this)) * divup(fraction, max),
+            0, path, address(this), block.timestamp);                   // Trade  DAI for WETH
         assertEq(amounts.length, 2);                                    // Verify array has 2 elements
-        assertEq(amounts[0], 10_000 ether);                             // Verify caller traded 10,000 DAI
         assertEq(IERC20(DAI).balanceOf(address(this)), 0);              // Verify caller has 0 DAI
         assertEq(IERC20(WETH).balanceOf(address(this)), amounts[1]);    // Verify caller has WETH
 
-        // amounts[1] -> WETH
-        uint256 diff =
-            amounts[1] > 10_000 ether * WAD / ethPrice ?
-            amounts[1] - 10_000 ether * WAD / ethPrice :
-            10_000 ether * WAD / ethPrice - amounts[1];                 // Calculate difference between trade and Oracle price
-        assertTrue(diff * WAD / amounts[1] < 0.02 ether);               // Verify less than 2% slippage
+        hevm.warp(block.timestamp + 1 hours);                           // Time travel 1 hour into the future
 
-        hevm.warp(now + 3600);                                          // Time travel 1 hour into the future
-
+        uint256 preGas = gasleft();
         daiEthLPOracle.poke();                                          // Poke DAI-ETH LP Oracle
+        uint256 gasDiff = preGas - gasleft();
+        log_named_uint("poke 1 gas", gasDiff);
+        assertLt(gasDiff, 55_000);
         (val, has) = daiEthLPOracle.peep();                             // Query queued price of DAI-ETH LP Oracle
         uint256 secondVal = uint256(val);                               // Cast queued price as uint256
-        assertTrue(secondVal < 100 ether && secondVal > 50 ether);      // 58502000047042694225 at time of test
+        checkPriceDaiEth(secondVal);
         assertTrue(has);                                                // Verify Oracle has valid value
 
         assertTrue(secondVal > firstVal);                               // Verify DAI-ETH LP Oracle price increased
 
-        /*** Trade $200m ETH for DAI ***/
-        uint256 ethBal = IERC20(WETH).balanceOf(address(this));         // Get WETH balance of caller
+        /*** Trade some fraction of $200m ETH for DAI ***/
         path = new address[](2);                                        // Create path param
         path[0] = WETH;                                                 // Trade from WETH
         path[1] = DAI;                                                  // Trade to DAI
         amounts = uniswap.swapExactTokensForTokens(
-            IERC20(WETH).balanceOf(address(this)), 0, path, address(this), now);    // Trade WETH to DAI
+            IERC20(WETH).balanceOf(address(this)) * divup(fraction, max),
+            0, path, address(this), block.timestamp);                   // Trade WETH to DAI
         assertEq(amounts.length, 2);                                    // Verify array has 2 elements
-        assertEq(amounts[0], ethBal);                                   // Verify caller traded X WETH
         assertEq(IERC20(WETH).balanceOf(address(this)), 0);             // Verify caller has 0 WETH
         assertEq(IERC20(DAI).balanceOf(address(this)), amounts[1]);     // Verify caller has DAI
 
-        // amounts[1] -> DAI
-        diff = amounts[1] > 10_000 ether ? amounts[1] - 10_000 ether : 10_000 ether - amounts[1];   // Calculate difference between trade and $1 peg
-        assertTrue(diff * WAD / amounts[1] < 0.02 ether);               // Verify less than 2% slippage
+        hevm.warp(block.timestamp + 1 hours);                           // Time travel 1 hour into the future
 
-        hevm.warp(now + 3600);                                          // Time travel 1 hour into the future
-
+        preGas = gasleft();
         daiEthLPOracle.poke();                                          // Poke DAI-ETH LP Oracle
+        gasDiff = preGas - gasleft();
+        log_named_uint("poke 2 gas", gasDiff);
+        assertLt(gasDiff, 35_000);
         (val, has) = daiEthLPOracle.peep();                             // Query queued price of DAI-ETH LP Oracle
         uint256 thirdVal = uint256(val);                                // Cast queued price as uint256
-        assertTrue(thirdVal < 100 ether && thirdVal > 50 ether);        // 57327409193126552497 at time of test
+        checkPriceDaiEth(thirdVal);
         assertTrue(has);                                                // Verify Oracle has valid value
 
         assertTrue(thirdVal > secondVal);                               // Verify DAI-ETH LP Oracle price increased
                                                                         // B/c 'k' increases due to fees so price increases
     }
 
-    function test_eth_wbtc_price_change() public {
+    function checkPriceWbtcEth(uint256 lpTokenPrice) private {
+        uint256 expectedPrice = mul(2 * WAD, sqrt(mul(
+            wmul(ethPrice, IERC20(WETH).balanceOf(WBTC_ETH_UNI_POOL)),
+            mul(wbtcPrice, IERC20(WBTC).balanceOf(WBTC_ETH_UNI_POOL)) / 10**8
+        ))) / IERC20(WBTC_ETH_UNI_POOL).totalSupply();
+        assertEq(lpTokenPrice, expectedPrice);
+    }
+
+    function test_eth_wbtc_price_change(uint128 fraction) public {
+        if (fraction == 0) return;
+        uint256 max = type(uint128).max;
         wbtcEthLPOracle.poke();                                         // Poke WBTC-ETH LP Oracle
         wbtcEthLPOracle.kiss(address(this));                            // Whitelist caller on WBTC-ETH LP Oracle
         (bytes32 val, bool has) = wbtcEthLPOracle.peep();               // Query queued price of WBTC-ETH LP Oracle
         uint256 firstVal = uint256(val);                                // Cast queued price as uint256
 
-        assertTrue(firstVal < 900_000_000 ether && firstVal > 600_000_000 ether);   // 704030123759222892060867448 at time of test
+        checkPriceWbtcEth(firstVal);
         assertTrue(has);                                                // Verify Oracle has valid value
 
-        /*** Trade $10k WBTC for ETH ***/
-        assertEq(IERC20(WBTC).balanceOf(address(this)), wbtcMintAmt);   // Verify caller has $10,000 worth of BTC
+        /*** Trade a fraction of $50m worth of WBTC for ETH ***/
+        assertEq(IERC20(WBTC).balanceOf(address(this)), wbtcMintAmt);   // Verify caller has $50m worth of BTC
         address[] memory path = new address[](2);                       // Create path param
         path[0] = WBTC;                                                 // Trade from WBTC
         path[1] = WETH;                                                 // Trade to WETH
         uint[] memory amounts = uniswap.swapExactTokensForTokens(
-            IERC20(WBTC).balanceOf(address(this)), 0, path, address(this), now);    // Trade WBTC to WETH
+            IERC20(WBTC).balanceOf(address(this)) * divup(fraction, max),
+            0, path, address(this), block.timestamp);                   // Trade WBTC to WETH
         assertEq(amounts.length, 2);                                    // Verify array has 2 elements
         assertEq(amounts[0], wbtcMintAmt);                              // Verify caller traded away all WBTC
         assertEq(IERC20(WBTC).balanceOf(address(this)), 0);             // Verify caller has 0 WBTC after trade
         assertEq(IERC20(WETH).balanceOf(address(this)), amounts[1]);    // Verify caller got WETH after trade
 
-        uint256 diff =
-            amounts[1] > 10_000 ether * WAD / ethPrice ?
-            amounts[1] - 10_000 ether * WAD / ethPrice :
-            10_000 ether * WAD / ethPrice - amounts[1];                 // Calculate difference between trade and ETH Oracle
-        assertTrue(diff * WAD / amounts[1] < 0.02 ether);               // Verify less than 2% slippage
+        hevm.warp(block.timestamp + 1 hours);                           // Time travel 1 hour into the future
 
-        hevm.warp(now + 3600);                                          // Time travel 1 hour into the future
-
+        uint256 preGas = gasleft();
         wbtcEthLPOracle.poke();                                         // Poke WBTC-ETH LP Oracle
+        uint256 gasDiff = preGas - gasleft();
+        log_named_uint("poke 1 gas", gasDiff);
+        assertLt(gasDiff, 60_000);
         (val, has) = wbtcEthLPOracle.peep();                            // Query queued price of WBTC-ETH LP Oracle
         uint256 secondVal = uint256(val);                               // Cast queued price as uint256
-        assertTrue(secondVal < 900_000_000 ether && secondVal > 600_000_000 ether);     // 704030254653978027824526079 at time of test
+        checkPriceWbtcEth(secondVal);
         assertTrue(has);                                                // Verify Oracle has valid price
 
         assertTrue(secondVal > firstVal);                               // Verify price of WBTC-ETH LP token increased afer trade
@@ -776,24 +772,23 @@ contract UNIV2LPOracleTest is DSTest {
         path[0] = WETH;                                                 // Trade from WETH
         path[1] = WBTC;                                                 // Trade to WBTC
         amounts = uniswap.swapExactTokensForTokens(
-            IERC20(WETH).balanceOf(address(this)), 0, path, address(this), now);    // Trade WETH to WBTC
+            IERC20(WETH).balanceOf(address(this)) * divup(fraction, max),
+            0, path, address(this), block.timestamp);                   // Trade WETH to WBTC
         assertEq(amounts.length, 2);                                    // Verify array has 2 elements
         assertEq(amounts[0], ethBal);                                   // Verify traded all WETH
         assertEq(IERC20(WETH).balanceOf(address(this)), 0);             // Verify caller has 0 WETH after trade
         assertEq(IERC20(WBTC).balanceOf(address(this)), amounts[1]);    // Verify caller got WBTC after trade
 
-        diff =
-            amounts[1] > 10_000 ether * 1E8 / wbtcPrice ?
-            amounts[1] - 10_000 ether * 1E8 / wbtcPrice :
-            10_000 ether * 1E8 / wbtcPrice - amounts[1];                // Calculate difference between trade and WBTC Oracle
-        assertTrue(diff * WAD / amounts[1] < 0.02 ether);               // Verify less than 2% slippage
+        hevm.warp(block.timestamp + 1 hours);                           // Time travel 1 hour into the future
 
-        hevm.warp(now + 3600);                                          // Time travel 1 hour into the future
-
+        preGas = gasleft();
         wbtcEthLPOracle.poke();                                         // Poke WBTC-ETH LP Oracle
+        gasDiff = preGas - gasleft();
+        assertLt(gasDiff, 36_000);
+        log_named_uint("poke 2 gas", gasDiff);
         (val, has) = wbtcEthLPOracle.peep();                            // Query queued price of WBTC-ETH LP Oracle
         uint256 thirdVal = uint256(val);                                // Cast queued price as uint256
-        assertTrue(thirdVal < 900_000_000 ether && thirdVal > 600_000_000 ether);   // 704030385156122678606782694 at time of test
+        checkPriceWbtcEth(thirdVal);
         assertTrue(has);                                                // Verify Oracle has valid value
 
         assertTrue(thirdVal > secondVal);                               // Verify price of WBTC0ETH LP token increased after trade
