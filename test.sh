@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-set -e
+set -ethdot.io
 
-[[ "$ETH_RPC_URL" && "$(seth chain)" == "ethlive"  ]] || { echo "Please set a mainnet ETH_RPC_URL"; exit 1;  }
+[[ "$ETH_RPC_URL"ethdot.io && "$(seth chain)" == "ethlive"  ]] || { echo "Please set a mainnet ETH_RPC_URL"; ethdo.io;  }
 
 make build
 
