@@ -685,7 +685,7 @@ contract UNIV2LPOracleTest is DSTest {
         daiEthLPOracle.poke();                                          // Poke DAI-ETH LP Oracle
         uint256 gasDiff = preGas - gasleft();
         log_named_uint("poke 1 gas", gasDiff);
-        assertLt(gasDiff, 55_000);
+        assertLt(gasDiff, 56_500);
         (val, has) = daiEthLPOracle.peep();                             // Query queued price of DAI-ETH LP Oracle
         uint256 secondVal = uint256(val);                               // Cast queued price as uint256
         checkPriceDaiEth(secondVal);
@@ -710,7 +710,7 @@ contract UNIV2LPOracleTest is DSTest {
         daiEthLPOracle.poke();                                          // Poke DAI-ETH LP Oracle
         gasDiff = preGas - gasleft();
         log_named_uint("poke 2 gas", gasDiff);
-        assertLt(gasDiff, 35_000);
+        assertLt(gasDiff, 36_500);
         (val, has) = daiEthLPOracle.peep();                             // Query queued price of DAI-ETH LP Oracle
         uint256 thirdVal = uint256(val);                                // Cast queued price as uint256
         checkPriceDaiEth(thirdVal);
@@ -794,7 +794,15 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(thirdVal > secondVal);                               // Verify price of WBTC0ETH LP token increased after trade
     }
 
-    function test_stop() public {
+    function test_stop_start() public {
+        assertEq(uint256(daiEthLPOracle.stopped()), 0);
+        daiEthLPOracle.stop();
+        assertEq(uint256(daiEthLPOracle.stopped()), 1);
+        daiEthLPOracle.start();
+        assertEq(uint256(daiEthLPOracle.stopped()), 0);
+    }
+
+    function test_void() public {
         daiEthLPOracle.poke();                                      // Poke DAI-ETH LP Oracle
         daiEthLPOracle.kiss(address(this));                         // Whitelist caller on DAI-ETH LP Oracle
         (bytes32 val, bool has) = daiEthLPOracle.peep();            // Query queued price of DAI-ETH LP Oracle
@@ -803,9 +811,9 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(resVal < 100 ether && resVal > 50 ether);        // 57327394135985707908 at time of test
         assertTrue(has);                                            // Verify Oracle has valid value
 
-        assertTrue(daiEthLPOracle.stopped() != 1);
-        daiEthLPOracle.stop();
-        assertTrue(daiEthLPOracle.stopped() == 1);
+        assertEq(uint256(daiEthLPOracle.stopped()), 0);
+        daiEthLPOracle.void();
+        assertEq(uint256(daiEthLPOracle.stopped()), 1);
 
         (val, has) = daiEthLPOracle.peep();                         // Query queued price of DAI-ETH LP Oracle
         resVal = uint256(val);
@@ -821,7 +829,7 @@ contract UNIV2LPOracleTest is DSTest {
         assertEq(daiEthLPOracle.zzz(), 0);
     }
 
-    function test_stop_start_poke() public {
+    function test_void_start_poke() public {
         daiEthLPOracle.poke();                                      // Poke DAI-ETH LP Oracle
         daiEthLPOracle.kiss(address(this));                         // Whitelist caller on DAI-ETH LP Oracle
         (bytes32 val, bool has) = daiEthLPOracle.peep();            // Query queued price of DAI-ETH LP Oracle
@@ -830,11 +838,11 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(resVal < 100 ether && resVal > 50 ether);        // 57327394135985707908 at time of test
         assertTrue(has);                                            // Verify Oracle has valid value
 
-        daiEthLPOracle.stop();
-        // No time change between stop and start
+        daiEthLPOracle.void();
+        // No time change between void and start
 
         daiEthLPOracle.start();
-        assertTrue(daiEthLPOracle.stopped() != 1);
+        assertEq(uint256(daiEthLPOracle.stopped()), 0);
 
         daiEthLPOracle.poke();
 
