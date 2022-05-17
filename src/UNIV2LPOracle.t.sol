@@ -875,6 +875,33 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(has);                                            // Verify Oracle has valid value
     }
 
+    function test_stop_void_start_poke() public {
+        daiEthLPOracle.poke();                                      // Poke DAI-ETH LP Oracle
+        daiEthLPOracle.kiss(address(this));                         // Whitelist caller on DAI-ETH LP Oracle
+        (bytes32 val, bool has) = daiEthLPOracle.peep();            // Query queued price of DAI-ETH LP Oracle
+        uint256 resVal = uint256(val);                              // Cast queued price as uint256
+
+        assertTrue(resVal < 100 ether && resVal > 50 ether);        // 57327394135985707908 at time of test
+        assertTrue(has);                                            // Verify Oracle has valid value
+
+        daiEthLPOracle.stop();
+        assertEq(uint256(daiEthLPOracle.stopped()), 1);
+        daiEthLPOracle.void();
+        assertEq(uint256(daiEthLPOracle.stopped()), 1);
+        // No time change between void and start
+
+        daiEthLPOracle.start();
+        assertEq(uint256(daiEthLPOracle.stopped()), 0);
+
+        daiEthLPOracle.poke();
+
+        (val, has) = daiEthLPOracle.peep();                         // Query queued price of DAI-ETH LP Oracle
+        resVal = uint256(val);                                      // Cast queued price as uint256
+
+        assertTrue(resVal < 100 ether && resVal > 50 ether);        // 57327394135985707908 at time of test
+        assertTrue(has);                                            // Verify Oracle has valid value
+    }
+
     // This test will fail if the value of `val` at peek does not match memory slot 0x3
     function testCurSlot0x3() public {
         daiEthLPOracle.poke();                                       // Poke oracle
