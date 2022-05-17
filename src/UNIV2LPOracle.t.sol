@@ -795,11 +795,33 @@ contract UNIV2LPOracleTest is DSTest {
     }
 
     function test_stop_start() public {
+        daiEthLPOracle.poke();
+        hevm.warp(block.timestamp + 1 hours);
+        daiEthLPOracle.poke();
+        daiEthLPOracle.kiss(address(this));
+        (bytes32 curValPrev, bool curHasPrev) = daiEthLPOracle.peek();
+        (bytes32 nxtValPrev, bool nxtHasPrev) = daiEthLPOracle.peep();
+        assertTrue(curValPrev > 0);
+        assertTrue(curHasPrev);
+        assertTrue(nxtValPrev > 0);
+        assertTrue(nxtHasPrev);
         assertEq(uint256(daiEthLPOracle.stopped()), 0);
         daiEthLPOracle.stop();
         assertEq(uint256(daiEthLPOracle.stopped()), 1);
+        (bytes32 curVal, bool curHas) = daiEthLPOracle.peek();
+        (bytes32 nxtVal, bool nxtHas) = daiEthLPOracle.peep();
+        assertEq(uint256(curValPrev), uint256(curVal));
+        assertTrue(curHas);
+        assertEq(uint256(nxtValPrev), uint256(nxtVal));
+        assertTrue(nxtHas);
         daiEthLPOracle.start();
         assertEq(uint256(daiEthLPOracle.stopped()), 0);
+        (curVal, curHas) = daiEthLPOracle.peek();
+        (nxtVal, nxtHas) = daiEthLPOracle.peep();
+        assertEq(uint256(curValPrev), uint256(curVal));
+        assertTrue(curHas);
+        assertEq(uint256(nxtValPrev), uint256(nxtVal));
+        assertTrue(nxtHas);
     }
 
     function test_void() public {
