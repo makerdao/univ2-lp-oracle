@@ -806,6 +806,7 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(nxtValPrev > 0);
         assertTrue(nxtHasPrev);
         assertEq(uint256(daiEthLPOracle.stopped()), 0);
+
         daiEthLPOracle.stop();
         assertEq(uint256(daiEthLPOracle.stopped()), 1);
         (bytes32 curVal, bool curHas) = daiEthLPOracle.peek();
@@ -814,6 +815,7 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(curHas);
         assertEq(uint256(nxtValPrev), uint256(nxtVal));
         assertTrue(nxtHas);
+
         daiEthLPOracle.start();
         assertEq(uint256(daiEthLPOracle.stopped()), 0);
         (curVal, curHas) = daiEthLPOracle.peek();
