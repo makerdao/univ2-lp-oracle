@@ -863,6 +863,7 @@ contract UNIV2LPOracleTest is DSTest {
         assertTrue(has);                                            // Verify Oracle has valid value
 
         daiEthLPOracle.void();
+        assertEq(uint256(daiEthLPOracle.stopped()), 1);
         // No time change between void and start
 
         daiEthLPOracle.start();
