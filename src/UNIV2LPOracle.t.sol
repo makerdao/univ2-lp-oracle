@@ -834,8 +834,8 @@ contract UNIV2LPOracleTest is DSTest {
 
         assertTrue(resVal < 100 ether && resVal > 50 ether);        // 57327394135985707908 at time of test
         assertTrue(has);                                            // Verify Oracle has valid value
-
         assertEq(uint256(daiEthLPOracle.stopped()), 0);
+
         daiEthLPOracle.void();
         assertEq(uint256(daiEthLPOracle.stopped()), 1);
 
@@ -861,6 +861,7 @@ contract UNIV2LPOracleTest is DSTest {
 
         assertTrue(resVal < 100 ether && resVal > 50 ether);        // 57327394135985707908 at time of test
         assertTrue(has);                                            // Verify Oracle has valid value
+        assertEq(uint256(daiEthLPOracle.stopped()), 0);
 
         daiEthLPOracle.void();
         assertEq(uint256(daiEthLPOracle.stopped()), 1);
@@ -886,6 +887,7 @@ contract UNIV2LPOracleTest is DSTest {
 
         assertTrue(resVal < 100 ether && resVal > 50 ether);        // 57327394135985707908 at time of test
         assertTrue(has);                                            // Verify Oracle has valid value
+        assertEq(uint256(daiEthLPOracle.stopped()), 0);
 
         daiEthLPOracle.stop();
         assertEq(uint256(daiEthLPOracle.stopped()), 1);
