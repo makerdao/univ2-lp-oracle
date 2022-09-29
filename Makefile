@@ -3,5 +3,5 @@
 all    :  build;
 build  :; ./build.sh
 clean  :; dapp clean
-test   :; ./test.sh $(MATCH)
+test   :; ./test.sh $(match)
 deploy :; dapp create Univ2LpOracle
