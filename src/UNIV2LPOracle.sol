@@ -307,7 +307,7 @@ contract UNIV2LPOracle {
                 zph_      := shr(24, slot1)
             }
 
-            // When stopped, values are set to zero and should remain such; thus, disallow updating in that case.
+            // When purely stopped or done via void, disallow updating.
             require(stopped_ == 0, "UNIV2LPOracle/is-stopped");
 
             // Equivalent to requiring that pass() returns true.
